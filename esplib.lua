@@ -415,9 +415,8 @@ run_service.RenderStepped:Connect(function()
                     }
                     for i = 1, 4 do
                         local f, t = sides[i][1], sides[i][2]
-                        local dir  = (t - f).Unit
                         local o = box.side_outline[i]
-                        set_line(o, f - dir, t + dir, esplib.box.outline, 2, esplib.box.outline_transparency)
+                        set_line(o, f, t, esplib.box.outline, 2, esplib.box.outline_transparency)
                         o.Visible = true
                         local fl = box.side_fill[i]
                         set_line(fl, f, t, esplib.box.fill, 1, esplib.box.fill_transparency)
@@ -441,9 +440,8 @@ run_service.RenderStepped:Connect(function()
                     }
                     for i = 1, 8 do
                         local f, t = corners[i][1], corners[i][2]
-                        local dir  = (t - f).Unit
                         local o = box.corner_outline[i]
-                        set_line(o, f - dir, t + dir, esplib.box.outline, 2, esplib.box.outline_transparency)
+                        set_line(o, f, t, esplib.box.outline, 2, esplib.box.outline_transparency)
                         o.Visible = true
                         local fl = box.corner_fill[i]
                         set_line(fl, f, t, esplib.box.fill, 1, esplib.box.fill_transparency)
@@ -594,11 +592,9 @@ run_service.RenderStepped:Connect(function()
                             if vA and vB then
                                 local from = Vector2.new(sA.X, sA.Y)
                                 local to   = Vector2.new(sB.X, sB.Y)
-                                local diff = to - from
-                                local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
-                                set_line(line.outline, from - dir*2, to + dir*2, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
+                                set_line(line.outline, from, to, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
                                 line.outline.Visible = true
-                                set_line(line.fill,    from - dir*2, to + dir*2, esplib.skeleton.fill,    1, esplib.skeleton.fill_transparency)
+                                set_line(line.fill,    from, to, esplib.skeleton.fill,    1, esplib.skeleton.fill_transparency)
                                 line.fill.Visible = true
                                 continue
                             end
