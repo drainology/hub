@@ -208,7 +208,7 @@ function espfunctions.add_box(instance)
     box.side_outline = {}
     box.side_fill    = {}
     for _ = 1, 4 do
-        table.insert(box.side_outline, make_line(3, 1))
+        table.insert(box.side_outline, make_line(2, 1))
         table.insert(box.side_fill,    make_line(1, 2))
     end
 
@@ -216,7 +216,7 @@ function espfunctions.add_box(instance)
     box.corner_outline = {}
     box.corner_fill    = {}
     for _ = 1, 8 do
-        table.insert(box.corner_outline, make_line(3, 1))
+        table.insert(box.corner_outline, make_line(2, 1))
         table.insert(box.corner_fill,    make_line(1, 2))
     end
 
@@ -248,7 +248,7 @@ function espfunctions.add_tracer(instance)
     if not instance or espinstances[instance] and espinstances[instance].tracer then return end
     espinstances[instance] = espinstances[instance] or {}
     espinstances[instance].tracer = {
-        outline = make_line(3, 1),
+        outline = make_line(2, 1),
         fill    = make_line(1, 2),
     }
 end
@@ -286,7 +286,7 @@ function espfunctions.add_skeleton(instance)
     local skel = { lines = {} }
     for _ = 1, MAX_SKELETON_BONES do
         table.insert(skel.lines, {
-            outline = make_line(3, 1),
+            outline = make_line(2, 1),
             fill    = make_line(1, 2),
         })
     end
@@ -393,7 +393,7 @@ run_service.RenderStepped:Connect(function()
                         local f, t = sides[i][1], sides[i][2]
                         local dir  = (t - f).Unit
                         local o = box.side_outline[i]
-                        set_line(o, f - dir, t + dir, esplib.box.outline, 3, esplib.box.outline_transparency)
+                        set_line(o, f - dir, t + dir, esplib.box.outline, 2, esplib.box.outline_transparency)
                         o.Visible = true
                         local fl = box.side_fill[i]
                         set_line(fl, f, t, esplib.box.fill, 1, esplib.box.fill_transparency)
@@ -419,7 +419,7 @@ run_service.RenderStepped:Connect(function()
                         local f, t = corners[i][1], corners[i][2]
                         local dir  = (t - f).Unit
                         local o = box.corner_outline[i]
-                        set_line(o, f - dir, t + dir, esplib.box.outline, 3, esplib.box.outline_transparency)
+                        set_line(o, f - dir, t + dir, esplib.box.outline, 2, esplib.box.outline_transparency)
                         o.Visible = true
                         local fl = box.corner_fill[i]
                         set_line(fl, f, t, esplib.box.fill, 1, esplib.box.fill_transparency)
@@ -539,7 +539,7 @@ run_service.RenderStepped:Connect(function()
 
                 local diff = to_pos - from_pos
                 local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
-                set_line(outline, from_pos - dir, to_pos + dir, esplib.tracer.outline, 3, esplib.tracer.outline_transparency)
+                set_line(outline, from_pos - dir, to_pos + dir, esplib.tracer.outline, 2, esplib.tracer.outline_transparency)
                 outline.Visible = true
                 set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1, esplib.tracer.fill_transparency)
                 fill.Visible = true
@@ -572,7 +572,7 @@ run_service.RenderStepped:Connect(function()
                                 local to   = Vector2.new(sB.X, sB.Y)
                                 local diff = to - from
                                 local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
-                                set_line(line.outline, from - dir, to + dir, esplib.skeleton.outline, 3, esplib.skeleton.outline_transparency)
+                                set_line(line.outline, from - dir, to + dir, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
                                 line.outline.Visible = true
                                 set_line(line.fill, from, to, esplib.skeleton.fill, 1, esplib.skeleton.fill_transparency)
                                 line.fill.Visible = true
