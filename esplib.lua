@@ -603,7 +603,7 @@ run_service.RenderStepped:Connect(function()
                                 local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
                                 set_line(line.outline, from - dir, to + dir, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
                                 line.outline.Visible = true
-                                set_line(line.fill, from, to, esplib.skeleton.fill, 1, esplib.skeleton.fill_transparency)
+                                set_line(line.fill, from - dir, to + dir, esplib.skeleton.fill, 1, esplib.skeleton.fill_transparency)
                                 line.fill.Visible = true
                                 continue
                             end
