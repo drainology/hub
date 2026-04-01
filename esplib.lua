@@ -285,76 +285,25 @@ local function get_bone_pos(instance, point)
     return part.CFrame:PointToWorldSpace(Vector3.new(h.X*off[1], h.Y*off[2], h.Z*off[3]))
 end
 
--- R6: Motor6D-based joints, exact and animation-correct
-local function compute_r6_bones(instance)
-    local torso = instance:FindFirstChild("Torso")
-    local head  = instance:FindFirstChild("Head")
-    local la    = instance:FindFirstChild("Left Arm")
-    local ra    = instance:FindFirstChild("Right Arm")
-    local ll    = instance:FindFirstChild("Left Leg")
-    local rl    = instance:FindFirstChild("Right Leg")
-    if not torso then return {} end
-
-    -- World position of Motor6D C0 socket (attachment point on Part0 = torso)
-    local function mw(name)
-        local m = torso:FindFirstChild(name)
-        return (m and m:IsA("Motor6D")) and (torso.CFrame * m.C0).Position or nil
-    end
-    -- World position of part top/bottom edge
-    local function py(part, y_mul)
-        return part and (part.CFrame * Vector3.new(0, part.Size.Y * 0.5 * y_mul, 0)) or nil
-    end
-
-    local neck    = mw("Neck")
-
-    local head_top = py(head,   1)
-    local t_bot    = py(torso, -1)
-    local la_top   = py(la,    1)   -- top of left arm
-    local la_bot   = py(la,   -1)   -- wrist
-    local ra_top   = py(ra,    1)
-    local ra_bot   = py(ra,   -1)
-    local ll_top   = py(ll,    1)   -- top of left leg
-    local ll_bot   = py(ll,   -1)   -- ankle
-    local rl_top   = py(rl,    1)
-    local rl_bot   = py(rl,   -1)
-
-    local b = {}
-    local function add(a, bb) if a and bb then b[#b+1] = {a, bb} end end
-
-    add(head_top, neck)    -- 1  neck (Motor6D exact joint)
-    add(neck,     t_bot)   -- 2  spine
-    add(neck,     la_top)  -- 3  left clavicle  (neck → arm top)
-    add(la_top,   la_bot)  -- 4  left arm       (straight down through arm)
-    add(neck,     ra_top)  -- 5  right clavicle
-    add(ra_top,   ra_bot)  -- 6  right arm
-    add(t_bot,    ll_top)  -- 7  left hip       (torso bottom → leg top)
-    add(ll_top,   ll_bot)  -- 8  left leg       (straight down through leg)
-    add(t_bot,    rl_top)  -- 9  right hip
-    add(rl_top,   rl_bot)  -- 10 right leg
-
-    return b
-end
-
--- R15: part-center pairs (each limb part is its own segment)
-local function compute_r15_bones(instance)
-    local b = {}
-    for _, bone in ipairs(R15_BONES) do
-        local a  = get_bone_pos(instance, bone[1])
-        local bb = get_bone_pos(instance, bone[2])
-        b[#b+1] = {a, bb}
-    end
-    return b
-end
-
--- Dispatcher: returns list of {wposA, wposB} world-space pairs
-local function get_skel_pairs(instance)
-    if instance:FindFirstChild("UpperTorso") then
-        return compute_r15_bones(instance)
-    elseif instance:FindFirstChild("Torso") then
-        return compute_r6_bones(instance)
-    end
-    return nil
-end
+-- R6: offset-based bone table (half-size multipliers in local space)
+local R6_BONES = {
+    -- neck: head bottom → torso top
+    { {"Head",  {0,-1,0}}, {"Torso", {0, 1, 0}} },
+    -- spine: torso top → torso bottom
+    { {"Torso", {0, 1, 0}}, {"Torso", {0,-1, 0}} },
+    -- left: clavicle (torso top → elbow) + forearm (elbow → wrist)
+    { {"Torso",    {0, 1,   0}}, {"Left Arm",  {0, 0.5, 0}} },
+    { {"Left Arm", {0, 0.5, 0}}, {"Left Arm",  {0, -1,  0}} },
+    -- right
+    { {"Torso",     {0, 1,   0}}, {"Right Arm", {0, 0.5, 0}} },
+    { {"Right Arm", {0, 0.5, 0}}, {"Right Arm", {0, -1,  0}} },
+    -- left hip (torso bottom → leg center) + shin (center → ankle)
+    { {"Torso",   {0,-1, 0}}, {"Left Leg",  {0, 0, 0}} },
+    { {"Left Leg",{0, 0, 0}}, {"Left Leg",  {0,-1, 0}} },
+    -- right
+    { {"Torso",     {0,-1, 0}}, {"Right Leg", {0, 0, 0}} },
+    { {"Right Leg", {0, 0, 0}}, {"Right Leg", {0,-1, 0}} },
+}
 
 function espfunctions.add_skeleton(instance)
     if not instance or espinstances[instance] and espinstances[instance].skeleton then return end
@@ -627,23 +576,29 @@ run_service.RenderStepped:Connect(function()
         -- skeleton
         if data.skeleton then
             if esplib.skeleton.enabled then
-                local pairs = get_skel_pairs(instance)
-                if pairs then
-                    for i, pair in ipairs(pairs) do
-                        local line = data.skeleton.lines[i]
-                        if not line then continue end
-                        local wA, wB = pair[1], pair[2]
-                        if wA and wB then
-                            local sA, vA = camera:WorldToViewportPoint(wA)
-                            local sB, vB = camera:WorldToViewportPoint(wB)
+                local bones
+                if instance:FindFirstChild("UpperTorso") then
+                    bones = R15_BONES
+                elseif instance:FindFirstChild("Torso") then
+                    bones = R6_BONES
+                end
+
+                if bones then
+                    for i, bone in ipairs(bones) do
+                        local line  = data.skeleton.lines[i]
+                        local wposA = get_bone_pos(instance, bone[1])
+                        local wposB = get_bone_pos(instance, bone[2])
+                        if wposA and wposB then
+                            local sA, vA = camera:WorldToViewportPoint(wposA)
+                            local sB, vB = camera:WorldToViewportPoint(wposB)
                             if vA and vB then
                                 local from = Vector2.new(sA.X, sA.Y)
                                 local to   = Vector2.new(sB.X, sB.Y)
                                 local diff = to - from
                                 local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
-                                set_line(line.outline, from-dir*2, to+dir*2, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
+                                set_line(line.outline, from - dir*2, to + dir*2, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
                                 line.outline.Visible = true
-                                set_line(line.fill,    from-dir*2, to+dir*2, esplib.skeleton.fill,    1, esplib.skeleton.fill_transparency)
+                                set_line(line.fill,    from - dir*2, to + dir*2, esplib.skeleton.fill,    1, esplib.skeleton.fill_transparency)
                                 line.fill.Visible = true
                                 continue
                             end
@@ -651,9 +606,9 @@ run_service.RenderStepped:Connect(function()
                         line.outline.Visible = false
                         line.fill.Visible    = false
                     end
-                    for i = #pairs + 1, MAX_SKELETON_BONES do
-                        local ln = data.skeleton.lines[i]
-                        if ln then ln.outline.Visible = false; ln.fill.Visible = false end
+                    for i = #bones + 1, MAX_SKELETON_BONES do
+                        data.skeleton.lines[i].outline.Visible = false
+                        data.skeleton.lines[i].fill.Visible    = false
                     end
                 else
                     for _, line in ipairs(data.skeleton.lines) do
