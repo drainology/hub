@@ -317,8 +317,9 @@ run_service.RenderStepped:Connect(function()
                     box.outline_frame.Size        = UDim2.fromOffset(w, h)
                     box.outline_stroke.Color      = esplib.box.outline
                     box.outline_frame.Visible     = true
-                    box.fill_frame.Position       = UDim2.fromOffset(x, y)
-                    box.fill_frame.Size           = UDim2.fromOffset(w, h)
+                    -- inset by 1px so the fill stroke sits inside the outline stroke
+                    box.fill_frame.Position       = UDim2.fromOffset(x + 1, y + 1)
+                    box.fill_frame.Size           = UDim2.fromOffset(w - 2, h - 2)
                     box.fill_stroke.Color         = esplib.box.fill
                     box.fill_frame.Visible        = true
                     for _, l in ipairs(box.corner_fill)    do l.Visible = false end
