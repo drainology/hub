@@ -261,19 +261,17 @@ local R6_BONES = {
     { {"Head",  {0,-1,0}}, {"Torso", {0, 1, 0}} },
     -- spine: torso top → torso bottom
     { {"Torso", {0, 1, 0}}, {"Torso", {0,-1, 0}} },
-    -- left: clavicle (torso top → arm center) + forearm (center → wrist)
-    { {"Torso",    {0, 1, 0}}, {"Left Arm",  {0, 0, 0}} },
-    { {"Left Arm", {0, 0, 0}}, {"Left Arm",  {0,-1, 0}} },
+    -- left: clavicle (torso top → arm lower) + forearm (lower → wrist)
+    { {"Torso",    {0, 1,   0}}, {"Left Arm",  {0,-0.5, 0}} },
+    { {"Left Arm", {0,-0.5, 0}}, {"Left Arm",  {0, -1,  0}} },
     -- right
-    { {"Torso",     {0, 1, 0}}, {"Right Arm", {0, 0, 0}} },
-    { {"Right Arm", {0, 0, 0}}, {"Right Arm", {0,-1, 0}} },
-    -- left hip → knee → ankle
-    { {"Torso",   {0,-1, 0}}, {"Left Leg",  {0, 1, 0}} },
-    { {"Left Leg",{0, 1, 0}}, {"Left Leg",  {0, 0, 0}} },
+    { {"Torso",     {0, 1,   0}}, {"Right Arm", {0,-0.5, 0}} },
+    { {"Right Arm", {0,-0.5, 0}}, {"Right Arm", {0, -1,  0}} },
+    -- left hip (torso bottom → leg center) + shin (center → ankle)
+    { {"Torso",   {0,-1, 0}}, {"Left Leg",  {0, 0, 0}} },
     { {"Left Leg",{0, 0, 0}}, {"Left Leg",  {0,-1, 0}} },
-    -- right hip → knee → ankle
-    { {"Torso",     {0,-1, 0}}, {"Right Leg", {0, 1, 0}} },
-    { {"Right Leg", {0, 1, 0}}, {"Right Leg", {0, 0, 0}} },
+    -- right
+    { {"Torso",     {0,-1, 0}}, {"Right Leg", {0, 0, 0}} },
     { {"Right Leg", {0, 0, 0}}, {"Right Leg", {0,-1, 0}} },
 }
 
