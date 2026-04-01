@@ -258,25 +258,25 @@ end
 -- Offsets are multipliers of the part's half-size in local space.
 local R6_BONES = {
     -- neck
-    { {"Head",      {0,-0.5,0}}, {"Torso",     {0, 0.5,0}} },
+    { {"Head",      {0,-1, 0}}, {"Torso",     {0, 1, 0}} },
     -- spine
-    { {"Torso",     {0, 0.5,0}}, {"Torso",     {0,-0.5,0}} },
+    { {"Torso",     {0, 1, 0}}, {"Torso",     {0,-1, 0}} },
     -- left arm: shoulder → elbow → wrist
-    { {"Torso",     {-0.5, 0.3,0}}, {"Left Arm",  {0, 0.5,0}} },
-    { {"Left Arm",  {0,  0.5,0}},   {"Left Arm",  {0, 0,  0}} },
-    { {"Left Arm",  {0,  0,  0}},   {"Left Arm",  {0,-0.5,0}} },
+    { {"Torso",     {-1, 0.6, 0}}, {"Left Arm",  {0, 1, 0}} },
+    { {"Left Arm",  {0,  1,   0}}, {"Left Arm",  {0, 0,  0}} },
+    { {"Left Arm",  {0,  0,   0}}, {"Left Arm",  {0,-1,  0}} },
     -- right arm: shoulder → elbow → wrist
-    { {"Torso",     { 0.5, 0.3,0}}, {"Right Arm", {0, 0.5,0}} },
-    { {"Right Arm", {0,  0.5,0}},   {"Right Arm", {0, 0,  0}} },
-    { {"Right Arm", {0,  0,  0}},   {"Right Arm", {0,-0.5,0}} },
+    { {"Torso",     { 1, 0.6, 0}}, {"Right Arm", {0, 1, 0}} },
+    { {"Right Arm", {0,  1,   0}}, {"Right Arm", {0, 0,  0}} },
+    { {"Right Arm", {0,  0,   0}}, {"Right Arm", {0,-1,  0}} },
     -- left leg: hip → knee → ankle
-    { {"Torso",     {-0.25,-0.5,0}}, {"Left Leg",  {0, 0.5,0}} },
-    { {"Left Leg",  {0,  0.5,0}},    {"Left Leg",  {0, 0,  0}} },
-    { {"Left Leg",  {0,  0,  0}},    {"Left Leg",  {0,-0.5,0}} },
+    { {"Torso",    {-0.5,-1, 0}}, {"Left Leg",  {0, 1, 0}} },
+    { {"Left Leg", {0,   1,  0}}, {"Left Leg",  {0, 0, 0}} },
+    { {"Left Leg", {0,   0,  0}}, {"Left Leg",  {0,-1, 0}} },
     -- right leg: hip → knee → ankle
-    { {"Torso",     { 0.25,-0.5,0}}, {"Right Leg", {0, 0.5,0}} },
-    { {"Right Leg", {0,  0.5,0}},    {"Right Leg", {0, 0,  0}} },
-    { {"Right Leg", {0,  0,  0}},    {"Right Leg", {0,-0.5,0}} },
+    { {"Torso",     { 0.5,-1, 0}}, {"Right Leg", {0, 1, 0}} },
+    { {"Right Leg", {0,   1,  0}}, {"Right Leg", {0, 0, 0}} },
+    { {"Right Leg", {0,   0,  0}}, {"Right Leg", {0,-1, 0}} },
 }
 
 local R15_BONES = {
