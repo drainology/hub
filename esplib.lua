@@ -257,26 +257,26 @@ end
 -- Each bone: { {partName, {xMul,yMul,zMul}}, {partName, {xMul,yMul,zMul}} }
 -- Offsets are multipliers of the part's half-size in local space.
 local R6_BONES = {
-    -- neck
-    { {"Head",      {0,-1, 0}}, {"Torso",     {0, 1, 0}} },
-    -- spine
-    { {"Torso",     {0, 1, 0}}, {"Torso",     {0,-1, 0}} },
-    -- left arm: shoulder → elbow → wrist
-    { {"Torso",     {-1, 0.6, 0}}, {"Left Arm",  {0, 1, 0}} },
-    { {"Left Arm",  {0,  1,   0}}, {"Left Arm",  {0, 0,  0}} },
-    { {"Left Arm",  {0,  0,   0}}, {"Left Arm",  {0,-1,  0}} },
-    -- right arm: shoulder → elbow → wrist
-    { {"Torso",     { 1, 0.6, 0}}, {"Right Arm", {0, 1, 0}} },
-    { {"Right Arm", {0,  1,   0}}, {"Right Arm", {0, 0,  0}} },
-    { {"Right Arm", {0,  0,   0}}, {"Right Arm", {0,-1,  0}} },
-    -- left leg: hip → knee → ankle
-    { {"Torso",    {-0.5,-1, 0}}, {"Left Leg",  {0, 1, 0}} },
-    { {"Left Leg", {0,   1,  0}}, {"Left Leg",  {0, 0, 0}} },
-    { {"Left Leg", {0,   0,  0}}, {"Left Leg",  {0,-1, 0}} },
-    -- right leg: hip → knee → ankle
-    { {"Torso",     { 0.5,-1, 0}}, {"Right Leg", {0, 1, 0}} },
-    { {"Right Leg", {0,   1,  0}}, {"Right Leg", {0, 0, 0}} },
-    { {"Right Leg", {0,   0,  0}}, {"Right Leg", {0,-1, 0}} },
+    -- neck: head bottom → torso top
+    { {"Head",  {0,-1,0}}, {"Torso", {0, 1, 0}} },
+    -- spine: torso top → torso bottom
+    { {"Torso", {0, 1, 0}}, {"Torso", {0,-1, 0}} },
+    -- left shoulder → elbow → wrist
+    { {"Torso",    {0, 0.5, 0}}, {"Left Arm",  {0, 1, 0}} },
+    { {"Left Arm", {0, 1,   0}}, {"Left Arm",  {0, 0, 0}} },
+    { {"Left Arm", {0, 0,   0}}, {"Left Arm",  {0,-1, 0}} },
+    -- right shoulder → elbow → wrist
+    { {"Torso",     {0, 0.5, 0}}, {"Right Arm", {0, 1, 0}} },
+    { {"Right Arm", {0, 1,   0}}, {"Right Arm", {0, 0, 0}} },
+    { {"Right Arm", {0, 0,   0}}, {"Right Arm", {0,-1, 0}} },
+    -- left hip → knee → ankle
+    { {"Torso",   {0,-1, 0}}, {"Left Leg",  {0, 1, 0}} },
+    { {"Left Leg",{0, 1, 0}}, {"Left Leg",  {0, 0, 0}} },
+    { {"Left Leg",{0, 0, 0}}, {"Left Leg",  {0,-1, 0}} },
+    -- right hip → knee → ankle
+    { {"Torso",     {0,-1, 0}}, {"Right Leg", {0, 1, 0}} },
+    { {"Right Leg", {0, 1, 0}}, {"Right Leg", {0, 0, 0}} },
+    { {"Right Leg", {0, 0, 0}}, {"Right Leg", {0,-1, 0}} },
 }
 
 local R15_BONES = {
@@ -298,7 +298,7 @@ local R15_BONES = {
 
 local MAX_SKELETON_BONES = 14  -- both rigs use 14 segments
 
--- resolves a bone point to a world-space Vector3
+-- resolves a bone point to a world-space 
 local function get_bone_pos(instance, point)
     local part = instance:FindFirstChild(point[1])
     if not part then return nil end
@@ -601,9 +601,9 @@ run_service.RenderStepped:Connect(function()
                                 local to   = Vector2.new(sB.X, sB.Y)
                                 local diff = to - from
                                 local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
-                                set_line(line.outline, from - dir, to + dir, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
+                                set_line(line.outline, from - dir*2, to + dir*2, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
                                 line.outline.Visible = true
-                                set_line(line.fill, from - dir, to + dir, esplib.skeleton.fill, 1, esplib.skeleton.fill_transparency)
+                                set_line(line.fill, from - dir*2, to + dir*2, esplib.skeleton.fill, 1, esplib.skeleton.fill_transparency)
                                 line.fill.Visible = true
                                 continue
                             end
