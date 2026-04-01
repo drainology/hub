@@ -306,31 +306,31 @@ local function compute_r6_bones(instance)
     end
 
     local neck    = mw("Neck")
-    local l_shldr = mw("Left Shoulder")
-    local r_shldr = mw("Right Shoulder")
-    local l_hip   = mw("Left Hip")
-    local r_hip   = mw("Right Hip")
 
     local head_top = py(head,   1)
     local t_bot    = py(torso, -1)
-    local la_bot   = py(la,   -1)  -- wrist
-    local ra_bot   = py(ra,   -1)  -- wrist
-    local ll_bot   = py(ll,   -1)  -- ankle
-    local rl_bot   = py(rl,   -1)  -- ankle
+    local la_top   = py(la,    1)   -- top of left arm
+    local la_bot   = py(la,   -1)   -- wrist
+    local ra_top   = py(ra,    1)
+    local ra_bot   = py(ra,   -1)
+    local ll_top   = py(ll,    1)   -- top of left leg
+    local ll_bot   = py(ll,   -1)   -- ankle
+    local rl_top   = py(rl,    1)
+    local rl_bot   = py(rl,   -1)
 
     local b = {}
     local function add(a, bb) if a and bb then b[#b+1] = {a, bb} end end
 
-    add(head_top, neck)    -- 1  neck
+    add(head_top, neck)    -- 1  neck (Motor6D exact joint)
     add(neck,     t_bot)   -- 2  spine
-    add(neck,     l_shldr) -- 3  left clavicle
-    add(l_shldr,  la_bot)  -- 4  left arm (socket → wrist, no elbow)
-    add(neck,     r_shldr) -- 5  right clavicle
-    add(r_shldr,  ra_bot)  -- 6  right arm
-    add(t_bot,    l_hip)   -- 7  left hip
-    add(l_hip,    ll_bot)  -- 8  left leg (socket → ankle, no knee)
-    add(t_bot,    r_hip)   -- 9  right hip
-    add(r_hip,    rl_bot)  -- 10 right leg
+    add(neck,     la_top)  -- 3  left clavicle  (neck → arm top)
+    add(la_top,   la_bot)  -- 4  left arm       (straight down through arm)
+    add(neck,     ra_top)  -- 5  right clavicle
+    add(ra_top,   ra_bot)  -- 6  right arm
+    add(t_bot,    ll_top)  -- 7  left hip       (torso bottom → leg top)
+    add(ll_top,   ll_bot)  -- 8  left leg       (straight down through leg)
+    add(t_bot,    rl_top)  -- 9  right hip
+    add(rl_top,   rl_bot)  -- 10 right leg
 
     return b
 end
