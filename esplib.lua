@@ -4,31 +4,39 @@ if not esplib then
     esplib = {
         box = {
             enabled = false,
-            type = "normal", -- normal, corner
+            type = "normal",
             padding = 1.15,
             fill = Color3.new(1,1,1),
+            fill_transparency = 0,
             outline = Color3.new(0,0,0),
+            outline_transparency = 0,
         },
         healthbar = {
             enabled = false,
             fill = Color3.new(0,1,0),
+            fill_transparency = 0,
             outline = Color3.new(0,0,0),
+            outline_transparency = 0,
         },
         name = {
             enabled = false,
             fill = Color3.new(1,1,1),
+            transparency = 0,
             size = 13,
         },
         distance = {
             enabled = false,
             fill = Color3.new(1,1,1),
+            transparency = 0,
             size = 13,
         },
         tracer = {
             enabled = false,
             fill = Color3.new(1,1,1),
+            fill_transparency = 0,
             outline = Color3.new(0,0,0),
-            from = "mouse", -- mouse, head, bottom, center
+            outline_transparency = 0,
+            from = "mouse",
         },
         highlight = {
             enabled = false,
@@ -101,10 +109,11 @@ local function make_line(thickness, z)
     return f
 end
 
-local function set_line(frame, from, to, color, thickness)
+local function set_line(frame, from, to, color, thickness, transparency)
     local diff   = to - from
     local length = diff.Magnitude
-    frame.BackgroundColor3 = color
+    frame.BackgroundColor3    = color
+    frame.BackgroundTransparency = transparency or 0
     if length < 0.5 then
         frame.Size = UDim2.fromOffset(0, thickness)
         return
@@ -330,10 +339,10 @@ run_service.RenderStepped:Connect(function()
                         local f, t = sides[i][1], sides[i][2]
                         local dir  = (t - f).Unit
                         local o = box.side_outline[i]
-                        set_line(o, f - dir, t + dir, esplib.box.outline, 3)
+                        set_line(o, f - dir, t + dir, esplib.box.outline, 3, esplib.box.outline_transparency)
                         o.Visible = true
                         local fl = box.side_fill[i]
-                        set_line(fl, f, t, esplib.box.fill, 1)
+                        set_line(fl, f, t, esplib.box.fill, 1, esplib.box.fill_transparency)
                         fl.Visible = true
                     end
                     for _, l in ipairs(box.corner_fill)    do l.Visible = false end
@@ -356,10 +365,10 @@ run_service.RenderStepped:Connect(function()
                         local f, t = corners[i][1], corners[i][2]
                         local dir  = (t - f).Unit
                         local o = box.corner_outline[i]
-                        set_line(o, f - dir, t + dir, esplib.box.outline, 3)
+                        set_line(o, f - dir, t + dir, esplib.box.outline, 3, esplib.box.outline_transparency)
                         o.Visible = true
                         local fl = box.corner_fill[i]
-                        set_line(fl, f, t, esplib.box.fill, 1)
+                        set_line(fl, f, t, esplib.box.fill, 1, esplib.box.fill_transparency)
                         fl.Visible = true
                     end
                 end
@@ -385,14 +394,16 @@ run_service.RenderStepped:Connect(function()
                     local by        = min.Y - pad
                     local health    = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                     local fillh     = height * health
-                    outline.BackgroundColor3 = esplib.healthbar.outline
-                    outline.Position         = UDim2.fromOffset(bx, by)
-                    outline.Size             = UDim2.fromOffset(1 + 2*pad, height + 2*pad)
-                    outline.Visible          = true
-                    fill.BackgroundColor3    = esplib.healthbar.fill
-                    fill.Position            = UDim2.fromOffset(bx + pad, by + (height + pad) - fillh)
-                    fill.Size                = UDim2.fromOffset(1, fillh)
-                    fill.Visible             = true
+                    outline.BackgroundColor3    = esplib.healthbar.outline
+                    outline.BackgroundTransparency = esplib.healthbar.outline_transparency
+                    outline.Position             = UDim2.fromOffset(bx, by)
+                    outline.Size                 = UDim2.fromOffset(1 + 2*pad, height + 2*pad)
+                    outline.Visible              = true
+                    fill.BackgroundColor3        = esplib.healthbar.fill
+                    fill.BackgroundTransparency  = esplib.healthbar.fill_transparency
+                    fill.Position                = UDim2.fromOffset(bx + pad, by + (height + pad) - fillh)
+                    fill.Size                    = UDim2.fromOffset(1, fillh)
+                    fill.Visible                 = true
                 else
                     outline.Visible = false; fill.Visible = false
                 end
@@ -410,12 +421,14 @@ run_service.RenderStepped:Connect(function()
                     local pl = players:GetPlayerFromCharacter(instance)
                     if pl then name_s = pl.Name end
                 end
-                t.Text      = name_s
-                t.TextSize  = esplib.name.size
-                t.TextColor3 = esplib.name.fill
-                t.Size      = UDim2.fromOffset(0, esplib.name.size + 4)
-                t.Position  = UDim2.fromOffset(cx, min.Y - esplib.name.size - 4)
-                t.Visible   = true
+                t.Text                = name_s
+                t.TextSize            = esplib.name.size
+                t.TextColor3          = esplib.name.fill
+                t.TextTransparency    = esplib.name.transparency
+                t.TextStrokeTransparency = esplib.name.transparency
+                t.Size                = UDim2.fromOffset(0, esplib.name.size + 4)
+                t.Position            = UDim2.fromOffset(cx, min.Y - esplib.name.size - 4)
+                t.Visible             = true
             else
                 data.name.Visible = false
             end
@@ -433,12 +446,14 @@ run_service.RenderStepped:Connect(function()
                 else
                     dist = (camera.CFrame.Position - instance.Position).Magnitude
                 end
-                t.Text       = tostring(math.floor(dist)) .. "m"
-                t.TextSize   = esplib.distance.size
-                t.TextColor3 = esplib.distance.fill
-                t.Size       = UDim2.fromOffset(0, esplib.distance.size + 4)
-                t.Position   = UDim2.fromOffset(cx, max.Y + 5)
-                t.Visible    = true
+                t.Text                = tostring(math.floor(dist)) .. "m"
+                t.TextSize            = esplib.distance.size
+                t.TextColor3          = esplib.distance.fill
+                t.TextTransparency    = esplib.distance.transparency
+                t.TextStrokeTransparency = esplib.distance.transparency
+                t.Size                = UDim2.fromOffset(0, esplib.distance.size + 4)
+                t.Position            = UDim2.fromOffset(cx, max.Y + 5)
+                t.Visible             = true
             else
                 data.distance.Visible = false
             end
@@ -470,9 +485,9 @@ run_service.RenderStepped:Connect(function()
 
                 local diff = to_pos - from_pos
                 local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
-                set_line(outline, from_pos - dir, to_pos + dir, esplib.tracer.outline, 3)
+                set_line(outline, from_pos - dir, to_pos + dir, esplib.tracer.outline, 3, esplib.tracer.outline_transparency)
                 outline.Visible = true
-                set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1)
+                set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1, esplib.tracer.fill_transparency)
                 fill.Visible = true
             else
                 data.tracer.outline.Visible = false
