@@ -40,7 +40,7 @@ if not esplib then
         },
         highlight = {
             enabled = false,
-            depth_mode = "AlwaysOnTop", -- "AlwaysOnTop", "Occluded", or "Both"
+            depth_mode = "Always", -- "Always", "Occluded", or "Both"
             fill = Color3.new(1, 0, 0),
             fill_transparency = 0.5,
             outline = Color3.new(1, 1, 1),
@@ -273,7 +273,7 @@ end
 function espfunctions.add_highlight(instance)
     if not instance or espinstances[instance] and espinstances[instance].highlight then return end
     local hl = Instance.new("Highlight")
-    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.DepthMode = Enum.HighlightDepthMode.Always
     hl.Adornee   = instance
     hl.Enabled   = false
     hl.Parent    = instance
@@ -503,7 +503,7 @@ run_service.RenderStepped:Connect(function()
                 hl.Enabled = false
             else
                 hl.Enabled = true
-                if cfg.depth_mode == "AlwaysOnTop" then
+                if cfg.depth_mode == "Always" then
                     hl.FillColor           = cfg.fill
                     hl.FillTransparency    = cfg.fill_transparency
                     hl.OutlineColor        = cfg.outline
