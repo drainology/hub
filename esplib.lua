@@ -38,6 +38,13 @@ if not esplib then
             outline_transparency = 0,
             from = "mouse",
         },
+        skeleton = {
+            enabled = false,
+            fill = Color3.new(1,1,1),
+            fill_transparency = 0,
+            outline = Color3.new(0,0,0),
+            outline_transparency = 0,
+        },
         highlight = {
             enabled = false,
             depth_mode = "Always", -- "Always", "Occluded", or "Both"
@@ -197,7 +204,7 @@ function espfunctions.add_box(instance)
     if not instance or espinstances[instance] and espinstances[instance].box then return end
     local box = {}
 
-    -- normal box: 4 sides, each with outline (3px) + fill (1px) line
+    -- normal box
     box.side_outline = {}
     box.side_fill    = {}
     for _ = 1, 4 do
@@ -205,7 +212,7 @@ function espfunctions.add_box(instance)
         table.insert(box.side_fill,    make_line(1, 2))
     end
 
-    -- corner box: 8 L-segments
+    -- corner box
     box.corner_outline = {}
     box.corner_fill    = {}
     for _ = 1, 8 do
@@ -246,17 +253,58 @@ function espfunctions.add_tracer(instance)
     }
 end
 
--- // highlight helpers (raycast-based, uses Highlight Instance unchanged)
+-- // skeleton bone tables
+local R6_BONES = {
+    { "Head",  "Torso"     },
+    { "Torso", "Left Arm"  },
+    { "Torso", "Right Arm" },
+    { "Torso", "Left Leg"  },
+    { "Torso", "Right Leg" },
+}
+
+local R15_BONES = {
+    { "Head",         "UpperTorso"    },
+    { "UpperTorso",   "LowerTorso"    },
+    { "LowerTorso",   "LeftUpperLeg"  },
+    { "LowerTorso",   "RightUpperLeg" },
+    { "LeftUpperLeg",  "LeftLowerLeg" },
+    { "LeftLowerLeg",  "LeftFoot"     },
+    { "RightUpperLeg", "RightLowerLeg"},
+    { "RightLowerLeg", "RightFoot"    },
+    { "UpperTorso",    "LeftUpperArm" },
+    { "LeftUpperArm",  "LeftLowerArm" },
+    { "LeftLowerArm",  "LeftHand"     },
+    { "UpperTorso",    "RightUpperArm"},
+    { "RightUpperArm", "RightLowerArm"},
+    { "RightLowerArm", "RightHand"    },
+}
+
+local MAX_SKELETON_BONES = #R15_BONES  -- 14
+
+function espfunctions.add_skeleton(instance)
+    if not instance or espinstances[instance] and espinstances[instance].skeleton then return end
+    local skel = { lines = {} }
+    for _ = 1, MAX_SKELETON_BONES do
+        table.insert(skel.lines, {
+            outline = make_line(3, 1),
+            fill    = make_line(1, 2),
+        })
+    end
+    espinstances[instance] = espinstances[instance] or {}
+    espinstances[instance].skeleton = skel
+end
+
+-- // highlight 
 local hl_params_cache = {}
 
-local CORNER_OFFSETS = {
+local CORNER_OFFSETS = { -- skull
     Vector3.new( 1,  1,  1), Vector3.new(-1,  1,  1),
     Vector3.new( 1, -1,  1), Vector3.new(-1, -1,  1),
     Vector3.new( 1,  1, -1), Vector3.new(-1,  1, -1),
     Vector3.new( 1, -1, -1), Vector3.new(-1, -1, -1),
 }
 
-local function is_visible_precise(instance, params)
+local function is_visible(instance, params)
     local origin = camera.CFrame.Position
     for _, part in ipairs(instance:GetDescendants()) do
         if not part:IsA("BasePart") then continue end
@@ -273,7 +321,7 @@ end
 function espfunctions.add_highlight(instance)
     if not instance or espinstances[instance] and espinstances[instance].highlight then return end
     local hl = Instance.new("Highlight")
-    hl.DepthMode = Enum.HighlightDepthMode.Always
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     hl.Adornee   = instance
     hl.Enabled   = false
     hl.Parent    = instance
@@ -289,7 +337,7 @@ end
 run_service.RenderStepped:Connect(function()
     for instance, data in pairs(espinstances) do
 
-        -- cleanup removed instances
+        -- cleanup 
         if not instance or not instance.Parent then
             if data.box then
                 for _, l in ipairs(data.box.side_outline)   do l:Destroy() end
@@ -306,6 +354,12 @@ run_service.RenderStepped:Connect(function()
             if data.tracer   then
                 data.tracer.outline:Destroy()
                 data.tracer.fill:Destroy()
+            end
+            if data.skeleton then
+                for _, line in ipairs(data.skeleton.lines) do
+                    line.outline:Destroy()
+                    line.fill:Destroy()
+                end
             end
             if data.highlight then
                 data.highlight:Destroy()
@@ -495,6 +549,58 @@ run_service.RenderStepped:Connect(function()
             end
         end
 
+        -- skeleton
+        if data.skeleton then
+            if esplib.skeleton.enabled then
+                local bones
+                if instance:FindFirstChild("UpperTorso") then
+                    bones = R15_BONES
+                elseif instance:FindFirstChild("Torso") then
+                    bones = R6_BONES
+                end
+
+                if bones then
+                    for i, bone in ipairs(bones) do
+                        local pA   = instance:FindFirstChild(bone[1])
+                        local pB   = instance:FindFirstChild(bone[2])
+                        local line = data.skeleton.lines[i]
+                        if pA and pB then
+                            local sA, vA = camera:WorldToViewportPoint(pA.Position)
+                            local sB, vB = camera:WorldToViewportPoint(pB.Position)
+                            if vA and vB then
+                                local from = Vector2.new(sA.X, sA.Y)
+                                local to   = Vector2.new(sB.X, sB.Y)
+                                local diff = to - from
+                                local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
+                                set_line(line.outline, from - dir, to + dir, esplib.skeleton.outline, 3, esplib.skeleton.outline_transparency)
+                                line.outline.Visible = true
+                                set_line(line.fill, from, to, esplib.skeleton.fill, 1, esplib.skeleton.fill_transparency)
+                                line.fill.Visible = true
+                                continue
+                            end
+                        end
+                        line.outline.Visible = false
+                        line.fill.Visible    = false
+                    end
+                    -- hide unused slots (R6 uses 5, R15 uses 14)
+                    for i = #bones + 1, MAX_SKELETON_BONES do
+                        data.skeleton.lines[i].outline.Visible = false
+                        data.skeleton.lines[i].fill.Visible    = false
+                    end
+                else
+                    for _, line in ipairs(data.skeleton.lines) do
+                        line.outline.Visible = false
+                        line.fill.Visible    = false
+                    end
+                end
+            else
+                for _, line in ipairs(data.skeleton.lines) do
+                    line.outline.Visible = false
+                    line.fill.Visible    = false
+                end
+            end
+        end
+
         -- highlight
         if data.highlight then
             local hl  = data.highlight
@@ -526,7 +632,7 @@ run_service.RenderStepped:Connect(function()
 
                 elseif cfg.depth_mode == "Both" then
                     local params  = hl_params_cache[instance]
-                    local visible = params and is_visible_precise(instance, params) or false
+                    local visible = params and is_visible(instance, params) or false
                     if not visible then
                         hl.FillColor = cfg.occ_fill; hl.FillTransparency = cfg.occ_fill_transparency
                         hl.OutlineColor = cfg.occ_outline; hl.OutlineTransparency = cfg.occ_outline_transparency
