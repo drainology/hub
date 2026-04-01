@@ -304,8 +304,6 @@ local function compute_r6_bones(instance)
     local function py(part, y_mul)
         return part and (part.CFrame * Vector3.new(0, part.Size.Y * 0.5 * y_mul, 0)) or nil
     end
-    -- Midpoint of two Vector3s
-    local function mid(a, b) return a and b and (a + b) * 0.5 or nil end
 
     local neck    = mw("Neck")
     local l_shldr = mw("Left Shoulder")
@@ -320,29 +318,19 @@ local function compute_r6_bones(instance)
     local ll_bot   = py(ll,   -1)  -- ankle
     local rl_bot   = py(rl,   -1)  -- ankle
 
-    -- Elbow/knee = midpoint between socket and limb end
-    local l_elbow = mid(l_shldr, la_bot)
-    local r_elbow = mid(r_shldr, ra_bot)
-    local l_knee  = mid(l_hip,   ll_bot)
-    local r_knee  = mid(r_hip,   rl_bot)
-
     local b = {}
     local function add(a, bb) if a and bb then b[#b+1] = {a, bb} end end
 
-    add(head_top, neck)     -- 1  neck
-    add(neck,     t_bot)    -- 2  spine
-    add(neck,     l_shldr)  -- 3  left clavicle
-    add(l_shldr,  l_elbow)  -- 4  left upper arm
-    add(l_elbow,  la_bot)   -- 5  left forearm
-    add(neck,     r_shldr)  -- 6  right clavicle
-    add(r_shldr,  r_elbow)  -- 7  right upper arm
-    add(r_elbow,  ra_bot)   -- 8  right forearm
-    add(t_bot,    l_hip)    -- 9  left hip
-    add(l_hip,    l_knee)   -- 10 left thigh
-    add(l_knee,   ll_bot)   -- 11 left shin
-    add(t_bot,    r_hip)    -- 12 right hip
-    add(r_hip,    r_knee)   -- 13 right thigh
-    add(r_knee,   rl_bot)   -- 14 right shin
+    add(head_top, neck)    -- 1  neck
+    add(neck,     t_bot)   -- 2  spine
+    add(neck,     l_shldr) -- 3  left clavicle
+    add(l_shldr,  la_bot)  -- 4  left arm (socket → wrist, no elbow)
+    add(neck,     r_shldr) -- 5  right clavicle
+    add(r_shldr,  ra_bot)  -- 6  right arm
+    add(t_bot,    l_hip)   -- 7  left hip
+    add(l_hip,    ll_bot)  -- 8  left leg (socket → ankle, no knee)
+    add(t_bot,    r_hip)   -- 9  right hip
+    add(r_hip,    rl_bot)  -- 10 right leg
 
     return b
 end
