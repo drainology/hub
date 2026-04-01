@@ -256,6 +256,24 @@ end
 -- // skeleton helpers
 
 -- Part-offset helper (used by R15)
+local R15_BONES = {
+    { {"Head",          {0,0,0}}, {"UpperTorso",   {0,0,0}} },
+    { {"UpperTorso",    {0,0,0}}, {"LowerTorso",   {0,0,0}} },
+    { {"LowerTorso",    {0,0,0}}, {"LeftUpperLeg", {0,0,0}} },
+    { {"LowerTorso",    {0,0,0}}, {"RightUpperLeg",{0,0,0}} },
+    { {"LeftUpperLeg",  {0,0,0}}, {"LeftLowerLeg", {0,0,0}} },
+    { {"LeftLowerLeg",  {0,0,0}}, {"LeftFoot",     {0,0,0}} },
+    { {"RightUpperLeg", {0,0,0}}, {"RightLowerLeg",{0,0,0}} },
+    { {"RightLowerLeg", {0,0,0}}, {"RightFoot",    {0,0,0}} },
+    { {"UpperTorso",    {0,0,0}}, {"LeftUpperArm", {0,0,0}} },
+    { {"LeftUpperArm",  {0,0,0}}, {"LeftLowerArm", {0,0,0}} },
+    { {"LeftLowerArm",  {0,0,0}}, {"LeftHand",     {0,0,0}} },
+    { {"UpperTorso",    {0,0,0}}, {"RightUpperArm",{0,0,0}} },
+    { {"RightUpperArm", {0,0,0}}, {"RightLowerArm",{0,0,0}} },
+    { {"RightLowerArm", {0,0,0}}, {"RightHand",    {0,0,0}} },
+}
+local MAX_SKELETON_BONES = 14
+
 local function get_bone_pos(instance, point)
     local part = instance:FindFirstChild(point[1])
     if not part then return nil end
