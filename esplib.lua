@@ -468,7 +468,9 @@ run_service.RenderStepped:Connect(function()
                     from_pos = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y)
                 end
 
-                set_line(outline, from_pos, to_pos, esplib.tracer.outline, 3)
+                local diff = to_pos - from_pos
+                local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
+                set_line(outline, from_pos - dir, to_pos + dir, esplib.tracer.outline, 3)
                 outline.Visible = true
                 set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1)
                 fill.Visible = true
