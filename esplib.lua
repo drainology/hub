@@ -262,13 +262,13 @@ local R6_BONES = {
     -- spine: torso top → torso bottom
     { {"Torso", {0, 1, 0}}, {"Torso", {0,-1, 0}} },
     -- left shoulder → elbow → wrist
-    { {"Torso",    {0, 0, 0}}, {"Left Arm",  {0, 1, 0}} },
-    { {"Left Arm", {0, 1,   0}}, {"Left Arm",  {0, 0, 0}} },
-    { {"Left Arm", {0, 0,   0}}, {"Left Arm",  {0,-1, 0}} },
+    { {"Torso",    {0, 1, 0}}, {"Left Arm",  {0, 1, 0}} },
+    { {"Left Arm", {0, 1, 0}}, {"Left Arm",  {0, 0, 0}} },
+    { {"Left Arm", {0, 0, 0}}, {"Left Arm",  {0,-1, 0}} },
     -- right shoulder → elbow → wrist
-    { {"Torso",     {0, 0, 0}}, {"Right Arm", {0, 1, 0}} },
-    { {"Right Arm", {0, 1,   0}}, {"Right Arm", {0, 0, 0}} },
-    { {"Right Arm", {0, 0,   0}}, {"Right Arm", {0,-1, 0}} },
+    { {"Torso",     {0, 1, 0}}, {"Right Arm", {0, 1, 0}} },
+    { {"Right Arm", {0, 1, 0}}, {"Right Arm", {0, 0, 0}} },
+    { {"Right Arm", {0, 0, 0}}, {"Right Arm", {0,-1, 0}} },
     -- left hip → knee → ankle
     { {"Torso",   {0,-1, 0}}, {"Left Leg",  {0, 1, 0}} },
     { {"Left Leg",{0, 1, 0}}, {"Left Leg",  {0, 0, 0}} },
