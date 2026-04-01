@@ -254,32 +254,61 @@ function espfunctions.add_tracer(instance)
 end
 
 -- // skeleton bone tables
+-- Each bone: { {partName, {xMul,yMul,zMul}}, {partName, {xMul,yMul,zMul}} }
+-- Offsets are multipliers of the part's half-size in local space.
 local R6_BONES = {
-    { "Head",  "Torso"     },
-    { "Torso", "Left Arm"  },
-    { "Torso", "Right Arm" },
-    { "Torso", "Left Leg"  },
-    { "Torso", "Right Leg" },
+    -- neck
+    { {"Head",      {0,-0.5,0}}, {"Torso",     {0, 0.5,0}} },
+    -- spine
+    { {"Torso",     {0, 0.5,0}}, {"Torso",     {0,-0.5,0}} },
+    -- left arm: shoulder → elbow → wrist
+    { {"Torso",     {-0.5, 0.3,0}}, {"Left Arm",  {0, 0.5,0}} },
+    { {"Left Arm",  {0,  0.5,0}},   {"Left Arm",  {0, 0,  0}} },
+    { {"Left Arm",  {0,  0,  0}},   {"Left Arm",  {0,-0.5,0}} },
+    -- right arm: shoulder → elbow → wrist
+    { {"Torso",     { 0.5, 0.3,0}}, {"Right Arm", {0, 0.5,0}} },
+    { {"Right Arm", {0,  0.5,0}},   {"Right Arm", {0, 0,  0}} },
+    { {"Right Arm", {0,  0,  0}},   {"Right Arm", {0,-0.5,0}} },
+    -- left leg: hip → knee → ankle
+    { {"Torso",     {-0.25,-0.5,0}}, {"Left Leg",  {0, 0.5,0}} },
+    { {"Left Leg",  {0,  0.5,0}},    {"Left Leg",  {0, 0,  0}} },
+    { {"Left Leg",  {0,  0,  0}},    {"Left Leg",  {0,-0.5,0}} },
+    -- right leg: hip → knee → ankle
+    { {"Torso",     { 0.25,-0.5,0}}, {"Right Leg", {0, 0.5,0}} },
+    { {"Right Leg", {0,  0.5,0}},    {"Right Leg", {0, 0,  0}} },
+    { {"Right Leg", {0,  0,  0}},    {"Right Leg", {0,-0.5,0}} },
 }
 
 local R15_BONES = {
-    { "Head",         "UpperTorso"    },
-    { "UpperTorso",   "LowerTorso"    },
-    { "LowerTorso",   "LeftUpperLeg"  },
-    { "LowerTorso",   "RightUpperLeg" },
-    { "LeftUpperLeg",  "LeftLowerLeg" },
-    { "LeftLowerLeg",  "LeftFoot"     },
-    { "RightUpperLeg", "RightLowerLeg"},
-    { "RightLowerLeg", "RightFoot"    },
-    { "UpperTorso",    "LeftUpperArm" },
-    { "LeftUpperArm",  "LeftLowerArm" },
-    { "LeftLowerArm",  "LeftHand"     },
-    { "UpperTorso",    "RightUpperArm"},
-    { "RightUpperArm", "RightLowerArm"},
-    { "RightLowerArm", "RightHand"    },
+    { {"Head",          {0,0,0}}, {"UpperTorso",   {0,0,0}} },
+    { {"UpperTorso",    {0,0,0}}, {"LowerTorso",   {0,0,0}} },
+    { {"LowerTorso",    {0,0,0}}, {"LeftUpperLeg", {0,0,0}} },
+    { {"LowerTorso",    {0,0,0}}, {"RightUpperLeg",{0,0,0}} },
+    { {"LeftUpperLeg",  {0,0,0}}, {"LeftLowerLeg", {0,0,0}} },
+    { {"LeftLowerLeg",  {0,0,0}}, {"LeftFoot",     {0,0,0}} },
+    { {"RightUpperLeg", {0,0,0}}, {"RightLowerLeg",{0,0,0}} },
+    { {"RightLowerLeg", {0,0,0}}, {"RightFoot",    {0,0,0}} },
+    { {"UpperTorso",    {0,0,0}}, {"LeftUpperArm", {0,0,0}} },
+    { {"LeftUpperArm",  {0,0,0}}, {"LeftLowerArm", {0,0,0}} },
+    { {"LeftLowerArm",  {0,0,0}}, {"LeftHand",     {0,0,0}} },
+    { {"UpperTorso",    {0,0,0}}, {"RightUpperArm",{0,0,0}} },
+    { {"RightUpperArm", {0,0,0}}, {"RightLowerArm",{0,0,0}} },
+    { {"RightLowerArm", {0,0,0}}, {"RightHand",    {0,0,0}} },
 }
 
-local MAX_SKELETON_BONES = #R15_BONES  -- 14
+local MAX_SKELETON_BONES = 14  -- both rigs use 14 segments
+
+-- resolves a bone point to a world-space Vector3
+local function get_bone_pos(instance, point)
+    local part = instance:FindFirstChild(point[1])
+    if not part then return nil end
+    local off = point[2]
+    if off[1] == 0 and off[2] == 0 and off[3] == 0 then
+        return part.Position
+    end
+    local h = part.Size * 0.5
+    return part.CFrame:PointToWorldSpace(Vector3.new(h.X*off[1], h.Y*off[2], h.Z*off[3]))
+end
 
 function espfunctions.add_skeleton(instance)
     if not instance or espinstances[instance] and espinstances[instance].skeleton then return end
@@ -561,12 +590,12 @@ run_service.RenderStepped:Connect(function()
 
                 if bones then
                     for i, bone in ipairs(bones) do
-                        local pA   = instance:FindFirstChild(bone[1])
-                        local pB   = instance:FindFirstChild(bone[2])
-                        local line = data.skeleton.lines[i]
-                        if pA and pB then
-                            local sA, vA = camera:WorldToViewportPoint(pA.Position)
-                            local sB, vB = camera:WorldToViewportPoint(pB.Position)
+                        local line  = data.skeleton.lines[i]
+                        local wposA = get_bone_pos(instance, bone[1])
+                        local wposB = get_bone_pos(instance, bone[2])
+                        if wposA and wposB then
+                            local sA, vA = camera:WorldToViewportPoint(wposA)
+                            local sB, vB = camera:WorldToViewportPoint(wposB)
                             if vA and vB then
                                 local from = Vector2.new(sA.X, sA.Y)
                                 local to   = Vector2.new(sB.X, sB.Y)
