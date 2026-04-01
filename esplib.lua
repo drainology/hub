@@ -188,9 +188,15 @@ function espfunctions.add_box(instance)
     if not instance or espinstances[instance] and espinstances[instance].box then return end
     local box = {}
 
-    local of = make_frame(1); box.outline_stroke = make_stroke(of, 3); box.outline_frame = of
-    local ff = make_frame(2); box.fill_stroke   = make_stroke(ff, 1); box.fill_frame   = ff
+    -- normal box: 4 sides, each with outline (3px) + fill (1px) line
+    box.side_outline = {}
+    box.side_fill    = {}
+    for _ = 1, 4 do
+        table.insert(box.side_outline, make_line(3, 1))
+        table.insert(box.side_fill,    make_line(1, 2))
+    end
 
+    -- corner box: 8 L-segments
     box.corner_outline = {}
     box.corner_fill    = {}
     for _ = 1, 8 do
@@ -277,8 +283,8 @@ run_service.RenderStepped:Connect(function()
         -- cleanup removed instances
         if not instance or not instance.Parent then
             if data.box then
-                data.box.outline_frame:Destroy()
-                data.box.fill_frame:Destroy()
+                for _, l in ipairs(data.box.side_outline)   do l:Destroy() end
+                for _, l in ipairs(data.box.side_fill)      do l:Destroy() end
                 for _, l in ipairs(data.box.corner_outline) do l:Destroy() end
                 for _, l in ipairs(data.box.corner_fill)    do l:Destroy() end
             end
@@ -313,21 +319,29 @@ run_service.RenderStepped:Connect(function()
                 local len  = math.min(w, h) * 0.25
 
                 if esplib.box.type == "normal" then
-                    box.outline_frame.Position    = UDim2.fromOffset(x, y)
-                    box.outline_frame.Size        = UDim2.fromOffset(w, h)
-                    box.outline_stroke.Color      = esplib.box.outline
-                    box.outline_frame.Visible     = true
-                    -- inset by 1px so the fill stroke sits inside the outline stroke
-                    box.fill_frame.Position       = UDim2.fromOffset(x + 1, y + 1)
-                    box.fill_frame.Size           = UDim2.fromOffset(w - 2, h - 2)
-                    box.fill_stroke.Color         = esplib.box.fill
-                    box.fill_frame.Visible        = true
+                    -- 4 sides: top, right, bottom, left
+                    local sides = {
+                        { Vector2.new(x,   y),   Vector2.new(x+w, y)   }, -- top
+                        { Vector2.new(x+w, y),   Vector2.new(x+w, y+h) }, -- right
+                        { Vector2.new(x,   y+h), Vector2.new(x+w, y+h) }, -- bottom
+                        { Vector2.new(x,   y),   Vector2.new(x,   y+h) }, -- left
+                    }
+                    for i = 1, 4 do
+                        local f, t = sides[i][1], sides[i][2]
+                        local dir  = (t - f).Unit
+                        local o = box.side_outline[i]
+                        set_line(o, f - dir, t + dir, esplib.box.outline, 3)
+                        o.Visible = true
+                        local fl = box.side_fill[i]
+                        set_line(fl, f, t, esplib.box.fill, 1)
+                        fl.Visible = true
+                    end
                     for _, l in ipairs(box.corner_fill)    do l.Visible = false end
                     for _, l in ipairs(box.corner_outline) do l.Visible = false end
 
                 elseif esplib.box.type == "corner" then
-                    box.outline_frame.Visible = false
-                    box.fill_frame.Visible    = false
+                    for _, l in ipairs(box.side_outline) do l.Visible = false end
+                    for _, l in ipairs(box.side_fill)    do l.Visible = false end
                     local corners = {
                         {Vector2.new(x,y),           Vector2.new(x+len,y)    },
                         {Vector2.new(x,y),           Vector2.new(x,y+len)    },
@@ -350,8 +364,8 @@ run_service.RenderStepped:Connect(function()
                     end
                 end
             else
-                box.outline_frame.Visible = false
-                box.fill_frame.Visible    = false
+                for _, l in ipairs(box.side_outline)   do l.Visible = false end
+                for _, l in ipairs(box.side_fill)      do l.Visible = false end
                 for _, l in ipairs(box.corner_fill)    do l.Visible = false end
                 for _, l in ipairs(box.corner_outline) do l.Visible = false end
             end
