@@ -287,8 +287,8 @@ end
 
 -- R6: offset-based bone table (half-size multipliers in local space)
 local R6_BONES = {
-    -- neck: head bottom → torso top
-    { {"Head",  {0,-1,0}}, {"Torso", {0, 1, 0}} },
+    -- neck: head center → torso top
+    { {"Head",  {0, 0, 0}}, {"Torso", {0, 1, 0}} },
     -- spine: torso top → torso bottom
     { {"Torso", {0, 1, 0}}, {"Torso", {0,-1, 0}} },
     -- left: clavicle (torso top → elbow) + forearm (elbow → wrist)
