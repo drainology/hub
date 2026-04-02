@@ -403,11 +403,11 @@ local R6_BONES = {
     { {"Head",  {0, 0, 0}}, {"Torso", {0, 0, 0}} },
     -- spine: torso center -> torso bottom
     { {"Torso", {0, 0, 0}}, {"Torso", {0,-1, 0}} },
-    -- left arm: shoulder (torso top) -> elbow (arm center) -> wrist
-    { {"Torso",    {0, 1, 0}}, {"Left Arm",  {0, 0, 0}} },
+    -- left arm: shoulder (top) -> elbow (center) -> wrist (bottom)
+    { {"Left Arm", {0, 1, 0}}, {"Left Arm",  {0,  0, 0}} },
     { {"Left Arm", {0, 0, 0}}, {"Left Arm",  {0, -1, 0}} },
     -- right arm
-    { {"Torso",     {0, 1, 0}}, {"Right Arm", {0, 0, 0}} },
+    { {"Right Arm", {0, 1, 0}}, {"Right Arm", {0,  0, 0}} },
     { {"Right Arm", {0, 0, 0}}, {"Right Arm", {0, -1, 0}} },
     -- left hip (torso bottom -> leg center) + shin (center -> ankle)
     { {"Torso",   {0,-1, 0}}, {"Left Leg",  {0, 0, 0}} },
