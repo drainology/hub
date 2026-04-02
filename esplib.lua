@@ -266,7 +266,7 @@ function espfunctions.add_healthbar(instance)
     local fill    = make_frame(2); fill.BackgroundTransparency    = 0
     -- UIGradient for "gradient_color" mode (bottom-to-top on vertical bar)
     local ui_gradient = Instance.new("UIGradient")
-    ui_gradient.Rotation = -90  -- bottom to top
+    ui_gradient.Rotation = 90  -- top to bottom
     ui_gradient.Enabled  = false
     ui_gradient.Parent   = fill
     espinstances[instance] = espinstances[instance] or {}
@@ -326,19 +326,19 @@ local function get_bone_pos(instance, point)
     return part.CFrame:PointToWorldSpace(Vector3.new(h.X*off[1], h.Y*off[2], h.Z*off[3]))
 end
 
--- R6: offset-based bone table (half-size multipliers in local space)
+-- R6
 local R6_BONES = {
-    -- neck: head center → torso top
+    -- neck: head center -> torso top
     { {"Head",  {0, 0, 0}}, {"Torso", {0, 1, 0}} },
-    -- spine: torso top → torso bottom
+    -- spine: torso top -> torso bottom
     { {"Torso", {0, 1, 0}}, {"Torso", {0,-1, 0}} },
-    -- left: clavicle (torso top → elbow) + forearm (elbow → wrist)
+    -- left: clavicle (torso top -> elbow) + forearm (elbow -> wrist)
     { {"Torso",    {0, 1,   0}}, {"Left Arm",  {0, 0.5, 0}} },
     { {"Left Arm", {0, 0.5, 0}}, {"Left Arm",  {0, -1,  0}} },
     -- right
     { {"Torso",     {0, 1,   0}}, {"Right Arm", {0, 0.5, 0}} },
     { {"Right Arm", {0, 0.5, 0}}, {"Right Arm", {0, -1,  0}} },
-    -- left hip (torso bottom → leg center) + shin (center → ankle)
+    -- left hip (torso bottom -> leg center) + shin (center -> ankle)
     { {"Torso",   {0,-1, 0}}, {"Left Leg",  {0, 0, 0}} },
     { {"Left Leg",{0, 0, 0}}, {"Left Leg",  {0,-1, 0}} },
     -- right
@@ -351,8 +351,8 @@ function espfunctions.add_skeleton(instance)
     local skel = { lines = {} }
     for _ = 1, MAX_SKELETON_BONES do
         table.insert(skel.lines, {
-            outline = make_line(2, 1),
-            fill    = make_line(1, 2),
+            outline = make_line(1, 1),
+            fill    = make_line(0.5, 2),
         })
     end
     espinstances[instance] = espinstances[instance] or {}
