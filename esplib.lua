@@ -395,7 +395,8 @@ function espfunctions.add_highlight(instance)
     hl.Enabled   = false
     hl.Parent    = instance
     local params = RaycastParams.new()
-    params.FilterDescendantsInstances = { instance }
+    local lp_char = local_player.Character
+    params.FilterDescendantsInstances = lp_char and { instance, lp_char } or { instance }
     params.FilterType = Enum.RaycastFilterType.Exclude
     hl_params_cache[instance] = params
     espinstances[instance] = espinstances[instance] or {}
@@ -456,6 +457,14 @@ run_service.RenderStepped:Connect(function(dt)
     local cam_cf  = camera.CFrame
     local cam_pos = cam_cf.Position
     local vp_size = camera.ViewportSize
+    local lp_char = local_player.Character
+
+    -- Keep highlight raycast filters fresh (handles respawns)
+    if lp_char then
+        for inst, params in pairs(hl_params_cache) do
+            params.FilterDescendantsInstances = { inst, lp_char }
+        end
+    end
 
     for instance, data in pairs(espinstances) do
 
