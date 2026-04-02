@@ -125,6 +125,42 @@ local _chams_cache = {} -- instance -> { model, sync = {{clonePart, origPart}, .
 
 -- // helpers
 
+local fonts = {}; do
+    function Register_Font(Name, Weight, Style, Asset)
+        if not isfile(Asset.Id) then
+            writefile(Asset.Id, Asset.Font)
+        end
+
+        if isfile(Name .. ".font") then
+            delfile(Name .. ".font")
+        end
+
+        local Data = {
+            name = Name,
+            faces = {
+                {
+                    name = "Normal",
+                    weight = Weight,
+                    style = Style,
+                    assetId = getcustomasset(Asset.Id),
+                },
+            },
+        }
+        writefile(Name .. ".font", http_service:JSONEncode(Data))
+
+        return getcustomasset(Name .. ".font");
+    end
+    
+    local ProggyTiny = Register_Font("adwdawdwadadwad!", 100, "Normal", {
+        Id = "ProggyTinyyyy.ttf",
+        Font = game:HttpGet("https://github.com/i77lhm/storage/raw/refs/heads/main/fonts/ProggyTiny.ttf"),
+    })
+
+    fonts = {
+        main = Font.new(ProggyTiny, Enum.FontWeight.Regular, Enum.FontStyle.Normal);
+    }
+end
+
 local function make_frame(z)
     local f = Instance.new("Frame")
     f.BorderSizePixel      = 0
@@ -170,7 +206,7 @@ local function make_label(z)
     t.TextColor3             = Color3.new(1, 1, 1)
     t.TextStrokeTransparency = 0
     t.TextStrokeColor3       = Color3.new(0, 0, 0)
-    t.Font                   = Enum.Font.Gotham
+    t.Font                   = fonts.main
     t.TextSize               = 13
     t.Text                   = ""
     t.AnchorPoint            = Vector2.new(0.5, 0)
