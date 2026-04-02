@@ -4,7 +4,6 @@ if not esplib then
     esplib = {
         box = {
             enabled = false,
-            type = "normal",
             padding = 1.15,
             outline = Color3.new(1,1,1),
             outline_transparency = 0,
@@ -226,55 +225,12 @@ function espfunctions.add_box(instance)
     inner_stroke.LineJoinMode = Enum.LineJoinMode.Miter
     inner_stroke.Parent       = inner_frame
 
-    -- corner box L-shapes (3-layer: outer black / mid color / inner black)
-    local corner_pieces = {}
-    local CS = 0.25
-    local function add_corner(ax, ay, px, py)
-        local function make_arm(is_horiz)
-            local sz = is_horiz and UDim2.new(CS,0,0,3) or UDim2.new(0,3,CS,0)
-            local ox = is_horiz and 0 or (ax==1 and -2 or 0)
-            local oy = is_horiz and (ay==1 and -2 or 0) or (ay==1 and -3 or 0)
-            local fo = Instance.new("Frame")
-            fo.AnchorPoint            = Vector2.new(ax, ay)
-            fo.BackgroundColor3       = Color3.new(0,0,0)
-            fo.BackgroundTransparency = 0
-            fo.BorderSizePixel        = 0
-            fo.Position               = UDim2.new(px, ox, py, oy)
-            fo.Size                   = sz
-            fo.ZIndex                 = 3
-            fo.Parent                 = holder
-            local fm = Instance.new("Frame")
-            fm.BackgroundColor3       = Color3.new(1,1,1)
-            fm.BackgroundTransparency = 0
-            fm.BorderSizePixel        = 0
-            fm.Position               = UDim2.new(0,1,0,1)
-            fm.Size                   = UDim2.new(1,-2,1,-2)
-            fm.ZIndex                 = 4
-            fm.Parent                 = fo
-            local fi = Instance.new("Frame")
-            fi.BackgroundColor3       = Color3.new(0,0,0)
-            fi.BackgroundTransparency = 0
-            fi.BorderSizePixel        = 0
-            fi.Position               = UDim2.new(0,1,0,1)
-            fi.Size                   = UDim2.new(1,-2,1,-2)
-            fi.ZIndex                 = 5
-            fi.Parent                 = fm
-            return { outer=fo, mid=fm, inner=fi }
-        end
-        corner_pieces[#corner_pieces+1] = { h=make_arm(true), v=make_arm(false) }
-    end
-    add_corner(0,0,0,0)
-    add_corner(1,0,1,0)
-    add_corner(0,1,0,1)
-    add_corner(1,1,1,1)
-
     espinstances[instance] = espinstances[instance] or {}
     espinstances[instance].box = {
         holder        = holder,
         outer_stroke  = outer_stroke,
         inner_frame   = inner_frame,
         inner_stroke  = inner_stroke,
-        corner_pieces = corner_pieces,
     }
 end
 
@@ -518,7 +474,6 @@ run_service.RenderStepped:Connect(function(dt)
             local box = data.box
             local x, y = math.floor(min.X), math.floor(min.Y)
             local w, h = math.floor((max - min).X), math.floor((max - min).Y)
-            local is_corner = esplib.box.type == "corner"
 
             if esplib.box.enabled and onscreen then
                 local holder = box.holder
@@ -528,39 +483,12 @@ run_service.RenderStepped:Connect(function(dt)
 
                 local out_t = fade_trans(esplib.box.outline_transparency)
 
-                if not is_corner then
-                    -- normal box: enable UIStrokes, hide corner L-shapes
-                    box.outer_stroke.Color        = Color3.new(0, 0, 0)
-                    box.outer_stroke.Transparency = out_t
-                    box.outer_stroke.Enabled      = true
-                    box.inner_stroke.Color        = esplib.box.outline
-                    box.inner_stroke.Transparency = out_t
-                    box.inner_stroke.Enabled      = true
-                    for _, c in ipairs(box.corner_pieces) do
-                        c.h.outer.Visible = false
-                        c.v.outer.Visible = false
-                    end
-                else
-                    -- corner box: disable UIStrokes, show L-shaped pieces only
-                    box.outer_stroke.Enabled = false
-                    box.inner_stroke.Enabled = false
-                    for _, c in ipairs(box.corner_pieces) do
-                        c.h.outer.BackgroundColor3       = Color3.new(0, 0, 0)
-                        c.h.outer.BackgroundTransparency = out_t
-                        c.h.mid.BackgroundColor3         = esplib.box.outline
-                        c.h.mid.BackgroundTransparency   = out_t
-                        c.h.inner.BackgroundColor3       = Color3.new(0, 0, 0)
-                        c.h.inner.BackgroundTransparency = out_t
-                        c.v.outer.BackgroundColor3       = Color3.new(0, 0, 0)
-                        c.v.outer.BackgroundTransparency = out_t
-                        c.v.mid.BackgroundColor3         = esplib.box.outline
-                        c.v.mid.BackgroundTransparency   = out_t
-                        c.v.inner.BackgroundColor3       = Color3.new(0, 0, 0)
-                        c.v.inner.BackgroundTransparency = out_t
-                        c.h.outer.Visible = true
-                        c.v.outer.Visible = true
-                    end
-                end
+                box.outer_stroke.Color        = Color3.new(0, 0, 0)
+                box.outer_stroke.Transparency = out_t
+                box.outer_stroke.Enabled      = true
+                box.inner_stroke.Color        = esplib.box.outline
+                box.inner_stroke.Transparency = out_t
+                box.inner_stroke.Enabled      = true
             else
                 box.holder.Visible = false
             end
