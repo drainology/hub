@@ -397,6 +397,35 @@ function espfunctions.add_highlight(instance)
     espinstances[instance].highlight = hl
 end
 
+-- // hide all elements for an instance without destroying them
+local function hide_instance(data)
+    if data.box then
+        for _, l in ipairs(data.box.side_outline)   do l.Visible = false end
+        for _, l in ipairs(data.box.side_fill)      do l.Visible = false end
+        for _, l in ipairs(data.box.corner_outline) do l.Visible = false end
+        for _, l in ipairs(data.box.corner_fill)    do l.Visible = false end
+    end
+    if data.healthbar then
+        data.healthbar.outline.Visible = false
+        data.healthbar.fill.Visible    = false
+    end
+    if data.name     then data.name.Visible     = false end
+    if data.distance then data.distance.Visible = false end
+    if data.tracer   then
+        data.tracer.outline.Visible = false
+        data.tracer.fill.Visible    = false
+    end
+    if data.skeleton then
+        for _, line in ipairs(data.skeleton.lines) do
+            line.outline.Visible = false
+            line.fill.Visible    = false
+        end
+    end
+    if data.highlight then
+        data.highlight.Enabled = false
+    end
+end
+
 -- // main thread
 run_service.RenderStepped:Connect(function(dt)
     -- advance death fade
@@ -444,7 +473,10 @@ run_service.RenderStepped:Connect(function(dt)
             continue
         end
 
-        if instance:IsA("Model") and not instance.PrimaryPart then continue end
+        if instance:IsA("Model") and not instance.PrimaryPart then
+            hide_instance(data)
+            continue
+        end
 
         local min, max, onscreen = get_bounding_box(instance)
 
