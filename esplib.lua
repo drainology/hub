@@ -54,6 +54,7 @@ if not esplib then
             occ_outline = Color3.new(1, 0.5, 0),
             occ_outline_transparency = 0,
         },
+        team_check = false, -- hide teammates when true
     }
     getgenv().esplib = esplib
 end
@@ -543,6 +544,15 @@ run_service.RenderStepped:Connect(function(dt)
             end
             if not instance.PrimaryPart then
                 is_dead = true
+            end
+        end
+
+        -- team check: skip teammates
+        if esplib.team_check and not is_dead then
+            local pl = players:GetPlayerFromCharacter(instance)
+            if pl and pl ~= local_player and pl.Team and pl.Team == local_player.Team then
+                hide_instance(data)
+                continue
             end
         end
 
