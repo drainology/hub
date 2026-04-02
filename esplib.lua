@@ -82,6 +82,46 @@ if not screen_gui then
     screen_gui.Parent         = local_player:WaitForChild("PlayerGui")
 end
 
+-- // death fade
+-- _fade: 0 = fully visible, 1 = fully hidden
+local _fade          = 0
+local _fade_target   = 0
+local _fade_elapsed  = 0
+local _fade_from     = 0
+local _fade_duration = 0.8
+local _fade_running  = false
+local _death_conn    = nil
+
+local function start_fade(to)
+    _fade_from    = _fade
+    _fade_target  = to
+    _fade_elapsed = 0
+    _fade_running = true
+end
+
+local function watch_humanoid(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if not hum then return end
+    if _death_conn then _death_conn:Disconnect() end
+    _death_conn = hum.Died:Connect(function()
+        start_fade(1)
+    end)
+end
+
+if local_player.Character then
+    task.spawn(watch_humanoid, local_player.Character)
+end
+local_player.CharacterAdded:Connect(function(char)
+    start_fade(0)  -- fade back in on respawn
+    task.spawn(watch_humanoid, char)
+end)
+
+-- blends a base transparency toward 1 by the current _fade amount
+local function fade_trans(base)
+    -- result = 1 - (1 - base) * (1 - _fade)
+    return 1 - (1 - base) * (1 - _fade)
+end
+
 -- // helpers
 
 local function make_frame(z)
@@ -358,7 +398,18 @@ function espfunctions.add_highlight(instance)
 end
 
 -- // main thread
-run_service.RenderStepped:Connect(function()
+run_service.RenderStepped:Connect(function(dt)
+    -- advance death fade
+    if _fade_running then
+        _fade_elapsed = _fade_elapsed + dt
+        local alpha = math.clamp(_fade_elapsed / _fade_duration, 0, 1)
+        local t = alpha * alpha * (3 - 2 * alpha)  -- smooth step
+        _fade = _fade_from + (_fade_target - _fade_from) * t
+        if alpha >= 1 then
+            _fade = _fade_target
+            _fade_running = false
+        end
+    end
     for instance, data in pairs(espinstances) do
 
         -- cleanup 
@@ -416,10 +467,10 @@ run_service.RenderStepped:Connect(function()
                     for i = 1, 4 do
                         local f, t = sides[i][1], sides[i][2]
                         local o = box.side_outline[i]
-                        set_line(o, f, t, esplib.box.outline, 2, esplib.box.outline_transparency)
+                        set_line(o, f, t, esplib.box.outline, 2, fade_trans(esplib.box.outline_transparency))
                         o.Visible = true
                         local fl = box.side_fill[i]
-                        set_line(fl, f, t, esplib.box.fill, 1, esplib.box.fill_transparency)
+                        set_line(fl, f, t, esplib.box.fill, 1, fade_trans(esplib.box.fill_transparency))
                         fl.Visible = true
                     end
                     for _, l in ipairs(box.corner_fill)    do l.Visible = false end
@@ -441,10 +492,10 @@ run_service.RenderStepped:Connect(function()
                     for i = 1, 8 do
                         local f, t = corners[i][1], corners[i][2]
                         local o = box.corner_outline[i]
-                        set_line(o, f, t, esplib.box.outline, 2, esplib.box.outline_transparency)
+                        set_line(o, f, t, esplib.box.outline, 2, fade_trans(esplib.box.outline_transparency))
                         o.Visible = true
                         local fl = box.corner_fill[i]
-                        set_line(fl, f, t, esplib.box.fill, 1, esplib.box.fill_transparency)
+                        set_line(fl, f, t, esplib.box.fill, 1, fade_trans(esplib.box.fill_transparency))
                         fl.Visible = true
                     end
                 end
@@ -471,12 +522,12 @@ run_service.RenderStepped:Connect(function()
                     local health    = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
                     local fillh     = height * health
                     outline.BackgroundColor3    = esplib.healthbar.outline
-                    outline.BackgroundTransparency = esplib.healthbar.outline_transparency
+                    outline.BackgroundTransparency = fade_trans(esplib.healthbar.outline_transparency)
                     outline.Position             = UDim2.fromOffset(bx, by)
                     outline.Size                 = UDim2.fromOffset(1 + 2*pad, height + 2*pad)
                     outline.Visible              = true
                     fill.BackgroundColor3        = esplib.healthbar.fill
-                    fill.BackgroundTransparency  = esplib.healthbar.fill_transparency
+                    fill.BackgroundTransparency  = fade_trans(esplib.healthbar.fill_transparency)
                     fill.Position                = UDim2.fromOffset(bx + pad, by + (height + pad) - fillh)
                     fill.Size                    = UDim2.fromOffset(1, fillh)
                     fill.Visible                 = true
@@ -500,8 +551,8 @@ run_service.RenderStepped:Connect(function()
                 t.Text                = name_s
                 t.TextSize            = esplib.name.size
                 t.TextColor3          = esplib.name.fill
-                t.TextTransparency    = esplib.name.transparency
-                t.TextStrokeTransparency = esplib.name.transparency
+                t.TextTransparency    = fade_trans(esplib.name.transparency)
+                t.TextStrokeTransparency = fade_trans(esplib.name.transparency)
                 t.Size                = UDim2.fromOffset(0, esplib.name.size + 4)
                 t.Position            = UDim2.fromOffset(cx, min.Y - esplib.name.size - 4)
                 t.Visible             = true
@@ -525,8 +576,8 @@ run_service.RenderStepped:Connect(function()
                 t.Text                = tostring(math.floor(dist)) .. "m"
                 t.TextSize            = esplib.distance.size
                 t.TextColor3          = esplib.distance.fill
-                t.TextTransparency    = esplib.distance.transparency
-                t.TextStrokeTransparency = esplib.distance.transparency
+                t.TextTransparency    = fade_trans(esplib.distance.transparency)
+                t.TextStrokeTransparency = fade_trans(esplib.distance.transparency)
                 t.Size                = UDim2.fromOffset(0, esplib.distance.size + 4)
                 t.Position            = UDim2.fromOffset(cx, max.Y + 5)
                 t.Visible             = true
@@ -561,9 +612,9 @@ run_service.RenderStepped:Connect(function()
 
                 local diff = to_pos - from_pos
                 local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
-                set_line(outline, from_pos - dir, to_pos + dir, esplib.tracer.outline, 2, esplib.tracer.outline_transparency)
+                set_line(outline, from_pos - dir, to_pos + dir, esplib.tracer.outline, 2, fade_trans(esplib.tracer.outline_transparency))
                 outline.Visible = true
-                set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1, esplib.tracer.fill_transparency)
+                set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1, fade_trans(esplib.tracer.fill_transparency))
                 fill.Visible = true
             else
                 data.tracer.outline.Visible = false
@@ -592,9 +643,9 @@ run_service.RenderStepped:Connect(function()
                             if vA and vB then
                                 local from = Vector2.new(sA.X, sA.Y)
                                 local to   = Vector2.new(sB.X, sB.Y)
-                                set_line(line.outline, from, to, esplib.skeleton.outline, 2, esplib.skeleton.outline_transparency)
+                                set_line(line.outline, from, to, esplib.skeleton.outline, 2, fade_trans(esplib.skeleton.outline_transparency))
                                 line.outline.Visible = true
-                                set_line(line.fill,    from, to, esplib.skeleton.fill,    1, esplib.skeleton.fill_transparency)
+                                set_line(line.fill,    from, to, esplib.skeleton.fill,    1, fade_trans(esplib.skeleton.fill_transparency))
                                 line.fill.Visible = true
                                 continue
                             end
@@ -630,9 +681,9 @@ run_service.RenderStepped:Connect(function()
                 hl.Enabled = true
                 if cfg.depth_mode == "Always" then
                     hl.FillColor           = cfg.fill
-                    hl.FillTransparency    = cfg.fill_transparency
+                    hl.FillTransparency    = fade_trans(cfg.fill_transparency)
                     hl.OutlineColor        = cfg.outline
-                    hl.OutlineTransparency = cfg.outline_transparency
+                    hl.OutlineTransparency = fade_trans(cfg.outline_transparency)
 
                 elseif cfg.depth_mode == "Occluded" then
                     local primary = instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart")
@@ -645,19 +696,19 @@ run_service.RenderStepped:Connect(function()
                     if occluded then
                         hl.FillTransparency = 1; hl.OutlineTransparency = 1
                     else
-                        hl.FillColor = cfg.fill; hl.FillTransparency = cfg.fill_transparency
-                        hl.OutlineColor = cfg.outline; hl.OutlineTransparency = cfg.outline_transparency
+                        hl.FillColor = cfg.fill; hl.FillTransparency = fade_trans(cfg.fill_transparency)
+                        hl.OutlineColor = cfg.outline; hl.OutlineTransparency = fade_trans(cfg.outline_transparency)
                     end
 
                 elseif cfg.depth_mode == "Both" then
                     local params  = hl_params_cache[instance]
                     local visible = params and is_visible(instance, params) or false
                     if not visible then
-                        hl.FillColor = cfg.occ_fill; hl.FillTransparency = cfg.occ_fill_transparency
-                        hl.OutlineColor = cfg.occ_outline; hl.OutlineTransparency = cfg.occ_outline_transparency
+                        hl.FillColor = cfg.occ_fill; hl.FillTransparency = fade_trans(cfg.occ_fill_transparency)
+                        hl.OutlineColor = cfg.occ_outline; hl.OutlineTransparency = fade_trans(cfg.occ_outline_transparency)
                     else
-                        hl.FillColor = cfg.fill; hl.FillTransparency = cfg.fill_transparency
-                        hl.OutlineColor = cfg.outline; hl.OutlineTransparency = cfg.outline_transparency
+                        hl.FillColor = cfg.fill; hl.FillTransparency = fade_trans(cfg.fill_transparency)
+                        hl.OutlineColor = cfg.outline; hl.OutlineTransparency = fade_trans(cfg.outline_transparency)
                     end
                 end
             end
