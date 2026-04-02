@@ -215,8 +215,8 @@ function espfunctions.add_box(instance)
     local mid_frame = Instance.new("Frame")
     mid_frame.BackgroundTransparency = 1
     mid_frame.BorderSizePixel        = 0
-    mid_frame.Position               = UDim2.new(0, 2, 0, 2)
-    mid_frame.Size                   = UDim2.new(1, -4, 1, -4)
+    mid_frame.Position               = UDim2.new(0, 1, 0, 1)
+    mid_frame.Size                   = UDim2.new(1, -2, 1, -2)
     mid_frame.ZIndex                 = 2
     mid_frame.Parent                 = holder
 
@@ -231,8 +231,8 @@ function espfunctions.add_box(instance)
     local inner_frame = Instance.new("Frame")
     inner_frame.BackgroundTransparency = 1
     inner_frame.BorderSizePixel        = 0
-    inner_frame.Position               = UDim2.new(0, 4, 0, 4)
-    inner_frame.Size                   = UDim2.new(1, -8, 1, -8)
+    inner_frame.Position               = UDim2.new(0, 2, 0, 2)
+    inner_frame.Size                   = UDim2.new(1, -4, 1, -4)
     inner_frame.ZIndex                 = 3
     inner_frame.Parent                 = holder
 
