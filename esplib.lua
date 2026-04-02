@@ -55,6 +55,12 @@ if not esplib then
             occ_outline = Color3.new(1, 0.5, 0),
             occ_outline_transparency = 0,
         },
+        chams = {
+            enabled = false,
+            transparency = 0.5, -- ViewportFrame ImageTransparency (0=opaque, 1=invisible)
+            use_color = false,  -- recolor all parts with a custom fill
+            fill = Color3.new(1, 0, 0),
+        },
         team_check = false, -- hide teammates when true
     }
     getgenv().esplib = esplib
@@ -93,6 +99,31 @@ if not screen_gui then
     screen_gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screen_gui.Parent         = local_player:WaitForChild("PlayerGui")
 end
+
+-- // Chams ViewportFrame container
+local _chams_gui = local_player:WaitForChild("PlayerGui"):FindFirstChild("_ESPChams")
+if not _chams_gui then
+    _chams_gui = Instance.new("ScreenGui")
+    _chams_gui.Name           = "_ESPChams"
+    _chams_gui.ResetOnSpawn   = false
+    _chams_gui.IgnoreGuiInset = true
+    _chams_gui.ScreenInsets   = Enum.ScreenInsets.None
+    _chams_gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    _chams_gui.Parent         = local_player:WaitForChild("PlayerGui")
+end
+local _chams_vp = _chams_gui:FindFirstChildOfClass("ViewportFrame")
+if not _chams_vp then
+    _chams_vp = Instance.new("ViewportFrame")
+    _chams_vp.BackgroundTransparency = 1
+    _chams_vp.Size           = UDim2.fromScale(1, 1)
+    _chams_vp.CurrentCamera  = camera
+    _chams_vp.LightColor     = Color3.new(1, 1, 1)
+    _chams_vp.Ambient        = Color3.new(1, 1, 1)
+    _chams_vp.ImageTransparency = esplib.chams.transparency
+    _chams_vp.Visible        = false
+    _chams_vp.Parent         = _chams_gui
+end
+local _chams_cache = {} -- instance -> { model, sync = {{clonePart, origPart}, ...} }
 
 -- // helpers
 
@@ -267,6 +298,48 @@ function espfunctions.add_healthbar(instance)
     ui_gradient.Parent   = fill
     espinstances[instance] = espinstances[instance] or {}
     espinstances[instance].healthbar = { outline = outline, fill = fill, ui_gradient = ui_gradient }
+end
+
+function espfunctions.add_chams(instance)
+    if not instance or _chams_cache[instance] then return end
+    if not instance.Archivable then instance.Archivable = true end
+    local ok, clone = pcall(function() return instance:Clone() end)
+    if not ok or not clone then return end
+    -- Remove scripts from clone
+    for _, d in ipairs(clone:GetDescendants()) do
+        if d:IsA("BaseScript") then d:Destroy() end
+    end
+    -- Apply custom color if configured
+    if esplib.chams.use_color then
+        for _, p in ipairs(clone:GetDescendants()) do
+            if p:IsA("BasePart") then
+                p.Color    = esplib.chams.fill
+                p.Material = Enum.Material.SmoothPlastic
+            end
+        end
+    end
+    clone.Parent = _chams_vp
+    -- Pre-build sync list: {clonePart, origPart} pairs matched by name
+    local orig_map = {}
+    for _, p in ipairs(instance:GetDescendants()) do
+        if p:IsA("BasePart") then orig_map[p.Name] = p end
+    end
+    local sync = {}
+    for _, cp in ipairs(clone:GetDescendants()) do
+        if cp:IsA("BasePart") then
+            local op = orig_map[cp.Name]
+            if op then sync[#sync + 1] = { cp, op } end
+        end
+    end
+    _chams_cache[instance] = { model = clone, sync = sync }
+end
+
+function espfunctions.remove_chams(instance)
+    local data = _chams_cache[instance]
+    if data then
+        data.model:Destroy()
+        _chams_cache[instance] = nil
+    end
 end
 
 function espfunctions.add_name(instance)
@@ -496,6 +569,24 @@ local _render_connection = run_service.RenderStepped:Connect(function(dt)
                 params.FilterDescendantsInstances = { inst, lp_char }
             end
         end
+    end
+
+    -- // Chams: sync clone CFrames to originals
+    if esplib.chams.enabled then
+        _chams_vp.ImageTransparency = esplib.chams.transparency
+        _chams_vp.Visible = true
+        for inst, chamData in pairs(_chams_cache) do
+            if inst and inst.Parent then
+                for _, pair in ipairs(chamData.sync) do
+                    pair[1].CFrame = pair[2].CFrame
+                end
+            else
+                chamData.model:Destroy()
+                _chams_cache[inst] = nil
+            end
+        end
+    else
+        _chams_vp.Visible = false
     end
 
     for instance, data in pairs(espinstances) do
@@ -868,6 +959,14 @@ function espfunctions.unload()
     -- destroy the entire screen gui
     if screen_gui and screen_gui.Parent then
         screen_gui:Destroy()
+    end
+    -- destroy the chams viewport gui
+    for _, chamData in pairs(_chams_cache) do
+        chamData.model:Destroy()
+    end
+    _chams_cache = {}
+    if _chams_gui and _chams_gui.Parent then
+        _chams_gui:Destroy()
     end
     -- wipe global so re-requiring gets a fresh copy
     getgenv().esplib = nil
