@@ -10,8 +10,11 @@ if not esplib then
         },
         healthbar = {
             enabled = false,
+            color_mode = "static", -- "static" or "gradient"
             fill = Color3.new(0,1,0),
             fill_transparency = 0,
+            gradient_low  = Color3.new(1,0,0),   -- color at 0% hp
+            gradient_high = Color3.new(0,1,0),   -- color at 100% hp
             outline = Color3.new(0,0,0),
             outline_transparency = 0,
         },
@@ -611,12 +614,18 @@ run_service.RenderStepped:Connect(function(dt)
                     local by        = min.Y - pad
                     local health    = mathclamp(hum.Health / hum.MaxHealth, 0, 1)
                     local fillh     = height * health
+                    local fill_color
+                    if esplib.healthbar.color_mode == "gradient" then
+                        fill_color = esplib.healthbar.gradient_low:Lerp(esplib.healthbar.gradient_high, health)
+                    else
+                        fill_color = esplib.healthbar.fill
+                    end
                     outline.BackgroundColor3       = esplib.healthbar.outline
                     outline.BackgroundTransparency = fade_trans(esplib.healthbar.outline_transparency, current_fade)
                     outline.Position               = udim2off(bx, by)
                     outline.Size                   = udim2off(1 + 2*pad, height + 2*pad)
                     outline.Visible                = true
-                    fill.BackgroundColor3           = esplib.healthbar.fill
+                    fill.BackgroundColor3           = fill_color
                     fill.BackgroundTransparency     = fade_trans(esplib.healthbar.fill_transparency, current_fade)
                     fill.Position                   = udim2off(bx + pad, by + (height + pad) - fillh)
                     fill.Size                       = udim2off(1, fillh)
