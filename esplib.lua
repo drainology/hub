@@ -58,8 +58,6 @@ if not esplib then
         chams = {
             enabled = false,
             transparency = 0.5, -- ViewportFrame ImageTransparency (0=opaque, 1=invisible)
-            use_color = false,  -- recolor all parts with a custom fill
-            fill = Color3.new(1, 0, 0),
         },
         team_check = false, -- hide teammates when true
     }
@@ -308,15 +306,6 @@ function espfunctions.add_chams(instance)
     -- Remove scripts from clone
     for _, d in ipairs(clone:GetDescendants()) do
         if d:IsA("BaseScript") then d:Destroy() end
-    end
-    -- Apply custom color if configured
-    if esplib.chams.use_color then
-        for _, p in ipairs(clone:GetDescendants()) do
-            if p:IsA("BasePart") then
-                p.Color    = esplib.chams.fill
-                p.Material = Enum.Material.SmoothPlastic
-            end
-        end
     end
     clone.Parent = _chams_vp
     -- Pre-build sync list: {clonePart, origPart} pairs matched by name
