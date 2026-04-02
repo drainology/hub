@@ -711,14 +711,6 @@ local _render_connection = run_service.RenderStepped:Connect(function(dt)
                 if tracer_from == "mouse" then
                     local ml = user_input_service:GetMouseLocation()
                     from_pos = v2new(ml.X, ml.Y)
-                elseif tracer_from == "head" then
-                    local head = instance:FindFirstChild("Head")
-                    if head then
-                        local p, v = camera:WorldToViewportPoint(head.Position)
-                        from_pos = v and v2new(p.X, p.Y) or v2new(vp_size.X * 0.5, vp_size.Y)
-                    else
-                        from_pos = v2new(vp_size.X * 0.5, vp_size.Y)
-                    end
                 elseif tracer_from == "center" then
                     from_pos = v2new(vp_size.X * 0.5, vp_size.Y * 0.5)
                 else -- bottom
