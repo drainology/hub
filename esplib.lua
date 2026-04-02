@@ -484,7 +484,7 @@ local FADE_DURATION = 0.5 -- seconds (moved outside loop)
 local _last_lp_char = nil  -- track character changes for highlight filter
 
 -- // main thread
-run_service.RenderStepped:Connect(function(dt)
+local _render_connection = run_service.RenderStepped:Connect(function(dt)
     local cam_cf  = camera.CFrame
     local cam_pos = cam_cf.Position
     local vp_size = camera.ViewportSize
@@ -843,6 +843,45 @@ run_service.RenderStepped:Connect(function(dt)
         end
     end
 end)
+
+-- // unload
+function espfunctions.unload()
+    -- disconnect render loop
+    if _render_connection then
+        _render_connection:Disconnect()
+        _render_connection = nil
+    end
+    -- destroy all ESP drawing objects
+    for instance, data in pairs(espinstances) do
+        if data.box     then data.box.holder:Destroy() end
+        if data.healthbar then
+            data.healthbar.outline:Destroy()
+            data.healthbar.fill:Destroy()
+        end
+        if data.name     then data.name:Destroy() end
+        if data.distance then data.distance:Destroy() end
+        if data.tracer   then
+            data.tracer.outline:Destroy()
+            data.tracer.fill:Destroy()
+        end
+        if data.skeleton then
+            for _, ln in ipairs(data.skeleton.lines) do
+                ln.outline:Destroy()
+                ln.fill:Destroy()
+            end
+        end
+        if data.highlight then
+            data.highlight.instance:Destroy()
+        end
+        espinstances[instance] = nil
+    end
+    -- destroy the entire screen gui
+    if screen_gui and screen_gui.Parent then
+        screen_gui:Destroy()
+    end
+    -- wipe global so re-requiring gets a fresh copy
+    getgenv().esplib = nil
+end
 
 -- // return
 for k, v in pairs(espfunctions) do
