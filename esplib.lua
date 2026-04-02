@@ -59,6 +59,19 @@ if not esplib then
 end
 
 local espinstances = {}
+
+-- // perf: cache frequently used math/constructors
+local v2new     = Vector2.new
+local v3new     = Vector3.new
+local c3new     = Color3.new
+local udim2off  = UDim2.fromOffset
+local mathfloor = math.floor
+local mathclamp = math.clamp
+local mathceil  = math.ceil
+local mathdeg   = math.deg
+local mathatan2 = math.atan2
+local BLACK     = c3new(0, 0, 0)
+local tick      = tick
 local espfunctions = {}
 
 -- // services
@@ -108,16 +121,16 @@ end
 local function set_line(frame, from, to, color, thickness, transparency)
     local diff   = to - from
     local length = diff.Magnitude
-    frame.BackgroundColor3    = color
+    frame.BackgroundColor3       = color
     frame.BackgroundTransparency = transparency or 0
     if length < 0.5 then
-        frame.Size = UDim2.fromOffset(0, thickness)
+        frame.Size = udim2off(0, thickness)
         return
     end
-    local len_adj = (thickness > 1) and (math.ceil(length) + thickness - 1) or math.ceil(length)
-    frame.Size     = UDim2.fromOffset(len_adj, thickness)
-    frame.Position = UDim2.fromOffset((from.X + to.X) / 2, (from.Y + to.Y) / 2)
-    frame.Rotation = math.deg(math.atan2(diff.Y, diff.X))
+    local len_adj = (thickness > 1) and (mathceil(length) + thickness - 1) or mathceil(length)
+    frame.Size     = udim2off(len_adj, thickness)
+    frame.Position = udim2off((from.X + to.X) * 0.5, (from.Y + to.Y) * 0.5)
+    frame.Rotation = mathdeg(mathatan2(diff.Y, diff.X))
 end
 
 local function make_label(z)
@@ -139,53 +152,60 @@ local function make_label(z)
 end
 
 -- // bounding box
-local function get_bounding_box(instance)
-    local min, max = Vector2.new(math.huge, math.huge), Vector2.new(-math.huge, -math.huge)
-    local onscreen = false
+-- Pre-baked sign table: avoids creating 8 Vector3s per part per frame
+local BBOX_SIGNS = {
+    { 1,  1,  1}, {-1,  1,  1}, { 1, -1,  1}, {-1, -1,  1},
+    { 1,  1, -1}, {-1,  1, -1}, { 1, -1, -1}, {-1, -1, -1},
+}
 
-    local function process_part(p)
-        local size = (p.Size / 2) * esplib.box.padding
-        local cf   = p.CFrame
-        for _, off in ipairs({
-            Vector3.new( size.X,  size.Y,  size.Z), Vector3.new(-size.X,  size.Y,  size.Z),
-            Vector3.new( size.X, -size.Y,  size.Z), Vector3.new(-size.X, -size.Y,  size.Z),
-            Vector3.new( size.X,  size.Y, -size.Z), Vector3.new(-size.X,  size.Y, -size.Z),
-            Vector3.new( size.X, -size.Y, -size.Z), Vector3.new(-size.X, -size.Y, -size.Z),
-        }) do
-            local pos, vis = camera:WorldToViewportPoint(cf:PointToWorldSpace(off))
-            if vis then
-                local v2 = Vector2.new(pos.X, pos.Y)
-                min = min:Min(v2); max = max:Max(v2); onscreen = true
-            end
+local function process_part_bbox(p, padding, cam, minX, minY, maxX, maxY)
+    local size = p.Size * 0.5 * padding
+    local sx, sy, sz = size.X, size.Y, size.Z
+    local cf = p.CFrame
+    local onscreen = false
+    for i = 1, 8 do
+        local s = BBOX_SIGNS[i]
+        local pos, vis = cam:WorldToViewportPoint(cf:PointToWorldSpace(v3new(sx*s[1], sy*s[2], sz*s[3])))
+        if vis then
+            local px, py = pos.X, pos.Y
+            if px < minX then minX = px end
+            if py < minY then minY = py end
+            if px > maxX then maxX = px end
+            if py > maxY then maxY = py end
+            onscreen = true
         end
     end
+    return minX, minY, maxX, maxY, onscreen
+end
+
+local function get_bounding_box(instance)
+    local minX, minY = math.huge, math.huge
+    local maxX, maxY = -math.huge, -math.huge
+    local onscreen = false
+    local padding = esplib.box.padding
+    local cam = camera
 
     if instance:IsA("Model") then
         for _, p in ipairs(instance:GetChildren()) do
             if p:IsA("BasePart") then
-                process_part(p)
+                local on
+                minX, minY, maxX, maxY, on = process_part_bbox(p, padding, cam, minX, minY, maxX, maxY)
+                onscreen = onscreen or on
             elseif p:IsA("Accessory") then
                 local h = p:FindFirstChild("Handle")
-                if h and h:IsA("BasePart") then process_part(h) end
+                if h and h:IsA("BasePart") then
+                    local on
+                    minX, minY, maxX, maxY, on = process_part_bbox(h, padding, cam, minX, minY, maxX, maxY)
+                    onscreen = onscreen or on
+                end
             end
         end
     elseif instance:IsA("BasePart") then
-        local size = instance.Size / 2
-        local cf   = instance.CFrame
-        for _, off in ipairs({
-            Vector3.new( size.X,  size.Y,  size.Z), Vector3.new(-size.X,  size.Y,  size.Z),
-            Vector3.new( size.X, -size.Y,  size.Z), Vector3.new(-size.X, -size.Y,  size.Z),
-            Vector3.new( size.X,  size.Y, -size.Z), Vector3.new(-size.X,  size.Y, -size.Z),
-            Vector3.new( size.X, -size.Y, -size.Z), Vector3.new(-size.X, -size.Y, -size.Z),
-        }) do
-            local pos, vis = camera:WorldToViewportPoint(cf:PointToWorldSpace(off))
-            if vis then
-                local v2 = Vector2.new(pos.X, pos.Y)
-                min = min:Min(v2); max = max:Max(v2); onscreen = true
-            end
-        end
+        local on
+        minX, minY, maxX, maxY, on = process_part_bbox(instance, 1, cam, minX, minY, maxX, maxY)
+        onscreen = on
     end
-    return min, max, onscreen
+    return v2new(minX, minY), v2new(maxX, maxY), onscreen
 end
 
 -- // add functions
@@ -330,26 +350,41 @@ end
 
 -- // highlight 
 local hl_params_cache = {}
+local hl_vis_cache    = {}  -- cached visibility result per instance
+local hl_vis_tick     = {}  -- last tick we computed visibility
+local HL_VIS_INTERVAL = 0.1 -- seconds between raycast checks (10 Hz)
 
-local CORNER_OFFSETS = { -- skull
-    Vector3.new( 1,  1,  1), Vector3.new(-1,  1,  1),
-    Vector3.new( 1, -1,  1), Vector3.new(-1, -1,  1),
-    Vector3.new( 1,  1, -1), Vector3.new(-1,  1, -1),
-    Vector3.new( 1, -1, -1), Vector3.new(-1, -1, -1),
-}
-
+-- Reuse sign table from bbox
 local function is_visible(instance, params)
     local origin = camera.CFrame.Position
-    for _, part in ipairs(instance:GetDescendants()) do
+    -- Only check BasePart children (not full descendants) for speed
+    for _, part in ipairs(instance:GetChildren()) do
         if not part:IsA("BasePart") then continue end
-        local cf, half = part.CFrame, part.Size * 0.5
+        -- Center ray first (cheapest, most likely to hit)
         if not workspace:Raycast(origin, part.Position - origin, params) then return true end
-        for _, off in ipairs(CORNER_OFFSETS) do
-            local corner = cf:PointToWorldSpace(Vector3.new(half.X*off.X, half.Y*off.Y, half.Z*off.Z))
+        -- 8 corner rays
+        local cf, half = part.CFrame, part.Size * 0.5
+        local hx, hy, hz = half.X, half.Y, half.Z
+        for i = 1, 8 do
+            local s = BBOX_SIGNS[i]
+            local corner = cf:PointToWorldSpace(v3new(hx*s[1], hy*s[2], hz*s[3]))
             if not workspace:Raycast(origin, corner - origin, params) then return true end
         end
     end
     return false
+end
+
+-- Throttled wrapper: only recomputes every HL_VIS_INTERVAL seconds
+local function is_visible_cached(instance, params)
+    local now = tick()
+    local last = hl_vis_tick[instance]
+    if last and (now - last) < HL_VIS_INTERVAL then
+        return hl_vis_cache[instance] or false
+    end
+    local result = is_visible(instance, params)
+    hl_vis_cache[instance] = result
+    hl_vis_tick[instance]  = now
+    return result
 end
 
 function espfunctions.add_highlight(instance)
@@ -364,7 +399,11 @@ function espfunctions.add_highlight(instance)
     params.FilterType = Enum.RaycastFilterType.Exclude
     hl_params_cache[instance] = params
     espinstances[instance] = espinstances[instance] or {}
-    espinstances[instance].highlight = hl
+    espinstances[instance].highlight = {
+        instance = hl,
+        -- dirty-check cache: avoid redundant property sets
+        _fc = nil, _ft = nil, _oc = nil, _ot = nil, _en = nil,
+    }
 end
 
 -- // hide all elements for an instance without destroying them
@@ -389,12 +428,35 @@ local function hide_instance(data)
         end
     end
     if data.highlight then
-        data.highlight.Enabled = false
+        data.highlight.instance.Enabled = false
+        data.highlight._en = false
     end
 end
 
+-- // inline fade helper (avoids closure allocation per instance)
+local function fade_trans(base, current_fade)
+    return 1 - (1 - base) * (1 - current_fade)
+end
+
+-- // highlight property setter with dirty-checking
+local function hl_set(hld, fc, ft, oc, ot, enabled)
+    local hl = hld.instance
+    if hld._en ~= enabled then hl.Enabled = enabled; hld._en = enabled end
+    if not enabled then return end
+    if hld._fc ~= fc then hl.FillColor = fc;           hld._fc = fc end
+    if hld._ft ~= ft then hl.FillTransparency = ft;    hld._ft = ft end
+    if hld._oc ~= oc then hl.OutlineColor = oc;        hld._oc = oc end
+    if hld._ot ~= ot then hl.OutlineTransparency = ot; hld._ot = ot end
+end
+
+local FADE_DURATION = 0.5 -- seconds (moved outside loop)
+
 -- // main thread
 run_service.RenderStepped:Connect(function(dt)
+    local cam_cf  = camera.CFrame
+    local cam_pos = cam_cf.Position
+    local vp_size = camera.ViewportSize
+
     for instance, data in pairs(espinstances) do
 
         -- cleanup 
@@ -419,16 +481,20 @@ run_service.RenderStepped:Connect(function(dt)
                 end
             end
             if data.highlight then
-                data.highlight:Destroy()
+                data.highlight.instance:Destroy()
                 hl_params_cache[instance] = nil
+                hl_vis_cache[instance]    = nil
+                hl_vis_tick[instance]     = nil
             end
             espinstances[instance] = nil
             continue
         end
 
+        -- Cache humanoid lookup once per frame per instance
+        local hum = instance:IsA("Model") and instance:FindFirstChildOfClass("Humanoid") or nil
+
         local is_dead = false
         if instance:IsA("Model") then
-            local hum = instance:FindFirstChildOfClass("Humanoid")
             if hum then
                 data.had_humanoid = true
                 if hum.Health <= 0 or hum:GetState() == Enum.HumanoidStateType.Dead then
@@ -439,17 +505,15 @@ run_service.RenderStepped:Connect(function(dt)
                     is_dead = true
                 end
             end
-            
             if not instance.PrimaryPart then
                 is_dead = true
             end
         end
 
-        local FADE_DURATION = 0.5 -- seconds
         if is_dead then
             data.death_time = data.death_time or tick()
             local elapsed_time = tick() - data.death_time
-            data.fade_alpha = math.clamp(elapsed_time / FADE_DURATION, 0, 1)
+            data.fade_alpha = mathclamp(elapsed_time / FADE_DURATION, 0, 1)
         else
             data.death_time = nil
             data.fade_alpha = 0
@@ -457,10 +521,6 @@ run_service.RenderStepped:Connect(function(dt)
 
         local alpha = data.fade_alpha
         local current_fade = alpha * alpha * (3 - 2 * alpha) -- smooth easing
-
-        local function fade_trans(base)
-            return 1 - (1 - base) * (1 - current_fade)
-        end
 
         if current_fade >= 0.99 and is_dead then
             hide_instance(data)
@@ -472,18 +532,16 @@ run_service.RenderStepped:Connect(function(dt)
         -- box
         if data.box then
             local box = data.box
-            local x, y = math.floor(min.X), math.floor(min.Y)
-            local w, h = math.floor((max - min).X), math.floor((max - min).Y)
-
             if esplib.box.enabled and onscreen then
+                local x, y = mathfloor(min.X), mathfloor(min.Y)
+                local w, h = mathfloor((max.X - min.X)), mathfloor((max.Y - min.Y))
                 local holder = box.holder
-                holder.Position = UDim2.fromOffset(x, y)
-                holder.Size     = UDim2.fromOffset(w, h)
+                holder.Position = udim2off(x, y)
+                holder.Size     = udim2off(w, h)
                 holder.Visible  = true
 
-                local out_t = fade_trans(esplib.box.outline_transparency)
+                local out_t = fade_trans(esplib.box.outline_transparency, current_fade)
 
-                box.outer_stroke.Color        = Color3.new(0, 0, 0)
                 box.outer_stroke.Transparency = out_t
                 box.outer_stroke.Enabled      = true
                 box.inner_stroke.Color        = esplib.box.outline
@@ -500,24 +558,23 @@ run_service.RenderStepped:Connect(function(dt)
             if not esplib.healthbar.enabled or not onscreen then
                 outline.Visible = false; fill.Visible = false
             else
-                local hum = instance:FindFirstChildOfClass("Humanoid")
                 if hum then
                     local height    = max.Y - min.Y
                     local pad       = 1
-                    local bx        = min.X - 3 - 1 - pad
+                    local bx        = min.X - 5
                     local by        = min.Y - pad
-                    local health    = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                    local health    = mathclamp(hum.Health / hum.MaxHealth, 0, 1)
                     local fillh     = height * health
-                    outline.BackgroundColor3    = esplib.healthbar.outline
-                    outline.BackgroundTransparency = fade_trans(esplib.healthbar.outline_transparency)
-                    outline.Position             = UDim2.fromOffset(bx, by)
-                    outline.Size                 = UDim2.fromOffset(1 + 2*pad, height + 2*pad)
-                    outline.Visible              = true
-                    fill.BackgroundColor3        = esplib.healthbar.fill
-                    fill.BackgroundTransparency  = fade_trans(esplib.healthbar.fill_transparency)
-                    fill.Position                = UDim2.fromOffset(bx + pad, by + (height + pad) - fillh)
-                    fill.Size                    = UDim2.fromOffset(1, fillh)
-                    fill.Visible                 = true
+                    outline.BackgroundColor3       = esplib.healthbar.outline
+                    outline.BackgroundTransparency = fade_trans(esplib.healthbar.outline_transparency, current_fade)
+                    outline.Position               = udim2off(bx, by)
+                    outline.Size                   = udim2off(1 + 2*pad, height + 2*pad)
+                    outline.Visible                = true
+                    fill.BackgroundColor3           = esplib.healthbar.fill
+                    fill.BackgroundTransparency     = fade_trans(esplib.healthbar.fill_transparency, current_fade)
+                    fill.Position                   = udim2off(bx + pad, by + (height + pad) - fillh)
+                    fill.Size                       = udim2off(1, fillh)
+                    fill.Visible                    = true
                 else
                     outline.Visible = false; fill.Visible = false
                 end
@@ -528,9 +585,8 @@ run_service.RenderStepped:Connect(function(dt)
         if data.name then
             if esplib.name.enabled and onscreen then
                 local t      = data.name
-                local cx     = (min.X + max.X) / 2
+                local cx     = (min.X + max.X) * 0.5
                 local name_s = instance.Name
-                local hum    = instance:FindFirstChildOfClass("Humanoid")
                 if hum then
                     local pl = players:GetPlayerFromCharacter(instance)
                     if pl then name_s = pl.Name end
@@ -541,14 +597,16 @@ run_service.RenderStepped:Connect(function(dt)
                     name_s = name_s .. string.format(" [D:%.2f]", current_fade)
                 end
 
-                t.Text                = name_s
-                t.TextSize            = esplib.name.size
-                t.TextColor3          = esplib.name.fill
-                t.TextTransparency    = fade_trans(esplib.name.transparency)
-                t.TextStrokeTransparency = fade_trans(esplib.name.transparency)
-                t.Size                = UDim2.fromOffset(0, esplib.name.size + 4)
-                t.Position            = UDim2.fromOffset(cx, min.Y - esplib.name.size - 4)
-                t.Visible             = true
+                local sz = esplib.name.size
+                local ft = fade_trans(esplib.name.transparency, current_fade)
+                t.Text                   = name_s
+                t.TextSize               = sz
+                t.TextColor3             = esplib.name.fill
+                t.TextTransparency       = ft
+                t.TextStrokeTransparency = ft
+                t.Size                   = udim2off(0, sz + 4)
+                t.Position               = udim2off(cx, min.Y - sz - 4)
+                t.Visible                = true
             else
                 data.name.Visible = false
             end
@@ -558,22 +616,24 @@ run_service.RenderStepped:Connect(function(dt)
         if data.distance then
             if esplib.distance.enabled and onscreen then
                 local t    = data.distance
-                local cx   = (min.X + max.X) / 2
+                local cx   = (min.X + max.X) * 0.5
                 local dist
                 if instance:IsA("Model") then
                     local pp = instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart")
-                    dist = pp and (camera.CFrame.Position - pp.Position).Magnitude or 999
+                    dist = pp and (cam_pos - pp.Position).Magnitude or 999
                 else
-                    dist = (camera.CFrame.Position - instance.Position).Magnitude
+                    dist = (cam_pos - instance.Position).Magnitude
                 end
-                t.Text                = tostring(math.floor(dist)) .. "m"
-                t.TextSize            = esplib.distance.size
-                t.TextColor3          = esplib.distance.fill
-                t.TextTransparency    = fade_trans(esplib.distance.transparency)
-                t.TextStrokeTransparency = fade_trans(esplib.distance.transparency)
-                t.Size                = UDim2.fromOffset(0, esplib.distance.size + 4)
-                t.Position            = UDim2.fromOffset(cx, max.Y + 5)
-                t.Visible             = true
+                local sz = esplib.distance.size
+                local ft = fade_trans(esplib.distance.transparency, current_fade)
+                t.Text                   = tostring(mathfloor(dist)) .. "m"
+                t.TextSize               = sz
+                t.TextColor3             = esplib.distance.fill
+                t.TextTransparency       = ft
+                t.TextStrokeTransparency = ft
+                t.Size                   = udim2off(0, sz + 4)
+                t.Position               = udim2off(cx, max.Y + 5)
+                t.Visible                = true
             else
                 data.distance.Visible = false
             end
@@ -583,30 +643,30 @@ run_service.RenderStepped:Connect(function(dt)
         if data.tracer then
             if esplib.tracer.enabled and onscreen then
                 local outline, fill = data.tracer.outline, data.tracer.fill
-                local from_pos = Vector2.new()
-                local to_pos   = (min + max) / 2
+                local from_pos
+                local to_pos = (min + max) * 0.5
 
-                if esplib.tracer.from == "mouse" then
+                local tracer_from = esplib.tracer.from
+                if tracer_from == "mouse" then
                     local ml = user_input_service:GetMouseLocation()
-                    from_pos = Vector2.new(ml.X, ml.Y)
-                elseif esplib.tracer.from == "head" then
+                    from_pos = v2new(ml.X, ml.Y)
+                elseif tracer_from == "head" then
                     local head = instance:FindFirstChild("Head")
                     if head then
                         local p, v = camera:WorldToViewportPoint(head.Position)
-                        from_pos = v and Vector2.new(p.X, p.Y) or Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y)
+                        from_pos = v and v2new(p.X, p.Y) or v2new(vp_size.X * 0.5, vp_size.Y)
                     else
-                        from_pos = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y)
+                        from_pos = v2new(vp_size.X * 0.5, vp_size.Y)
                     end
-                elseif esplib.tracer.from == "center" then
-                    from_pos = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+                elseif tracer_from == "center" then
+                    from_pos = v2new(vp_size.X * 0.5, vp_size.Y * 0.5)
                 else -- bottom
-                    from_pos = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y)
+                    from_pos = v2new(vp_size.X * 0.5, vp_size.Y)
                 end
 
-                local diff = to_pos - from_pos
-                set_line(outline, from_pos, to_pos, esplib.tracer.outline, 3, fade_trans(esplib.tracer.outline_transparency))
+                set_line(outline, from_pos, to_pos, esplib.tracer.outline, 3, fade_trans(esplib.tracer.outline_transparency, current_fade))
                 outline.Visible = true
-                set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1, fade_trans(esplib.tracer.fill_transparency))
+                set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1, fade_trans(esplib.tracer.fill_transparency, current_fade))
                 fill.Visible = true
             else
                 data.tracer.outline.Visible = false
@@ -617,12 +677,18 @@ run_service.RenderStepped:Connect(function(dt)
         -- skeleton
         if data.skeleton then
             if esplib.skeleton.enabled then
-                local bones
-                if instance:FindFirstChild("UpperTorso") then
-                    bones = R15_BONES
-                elseif instance:FindFirstChild("Torso") then
-                    bones = R6_BONES
+                -- Cache rig type per instance to avoid FindFirstChild every frame
+                local rig = data._rig
+                if not rig then
+                    if instance:FindFirstChild("UpperTorso") then
+                        rig = "r15"
+                    elseif instance:FindFirstChild("Torso") then
+                        rig = "r6"
+                    end
+                    data._rig = rig
                 end
+
+                local bones = rig == "r15" and R15_BONES or (rig == "r6" and R6_BONES or nil)
 
                 if bones then
                     for i, bone in ipairs(bones) do
@@ -633,11 +699,11 @@ run_service.RenderStepped:Connect(function(dt)
                             local sA, vA = camera:WorldToViewportPoint(wposA)
                             local sB, vB = camera:WorldToViewportPoint(wposB)
                             if vA and vB then
-                                local from = Vector2.new(sA.X, sA.Y)
-                                local to   = Vector2.new(sB.X, sB.Y)
-                                set_line(line.outline, from, to, esplib.skeleton.outline, 3, fade_trans(esplib.skeleton.outline_transparency))
+                                local from = v2new(sA.X, sA.Y)
+                                local to   = v2new(sB.X, sB.Y)
+                                set_line(line.outline, from, to, esplib.skeleton.outline, 3, fade_trans(esplib.skeleton.outline_transparency, current_fade))
                                 line.outline.Visible = true
-                                set_line(line.fill,    from, to, esplib.skeleton.fill,    1, fade_trans(esplib.skeleton.fill_transparency))
+                                set_line(line.fill,    from, to, esplib.skeleton.fill,    1, fade_trans(esplib.skeleton.fill_transparency, current_fade))
                                 line.fill.Visible = true
                                 continue
                             end
@@ -663,44 +729,51 @@ run_service.RenderStepped:Connect(function(dt)
             end
         end
 
-        -- highlight
+        -- highlight (with caching + dirty-checking)
         if data.highlight then
-            local hl  = data.highlight
+            local hld = data.highlight
             local cfg = esplib.highlight
             if not cfg.enabled then
-                hl.Enabled = false
+                hl_set(hld, nil, nil, nil, nil, false)
             else
-                hl.Enabled = true
                 if cfg.depth_mode == "Always" then
-                    hl.FillColor           = cfg.fill
-                    hl.FillTransparency    = fade_trans(cfg.fill_transparency)
-                    hl.OutlineColor        = cfg.outline
-                    hl.OutlineTransparency = fade_trans(cfg.outline_transparency)
+                    hl_set(hld,
+                        cfg.fill,    fade_trans(cfg.fill_transparency, current_fade),
+                        cfg.outline, fade_trans(cfg.outline_transparency, current_fade),
+                        true)
 
                 elseif cfg.depth_mode == "Occluded" then
                     local primary = instance.PrimaryPart or instance:FindFirstChildWhichIsA("BasePart")
                     local occluded = false
                     if primary then
-                        local o = camera.CFrame.Position
-                        local r = hl_params_cache[instance] and workspace:Raycast(o, primary.Position - o, hl_params_cache[instance])
-                        occluded = r ~= nil
+                        local params = hl_params_cache[instance]
+                        if params then
+                            local r = workspace:Raycast(cam_pos, primary.Position - cam_pos, params)
+                            occluded = r ~= nil
+                        end
                     end
                     if occluded then
-                        hl.FillTransparency = 1; hl.OutlineTransparency = 1
+                        hl_set(hld, cfg.fill, 1, cfg.outline, 1, true)
                     else
-                        hl.FillColor = cfg.fill; hl.FillTransparency = fade_trans(cfg.fill_transparency)
-                        hl.OutlineColor = cfg.outline; hl.OutlineTransparency = fade_trans(cfg.outline_transparency)
+                        hl_set(hld,
+                            cfg.fill,    fade_trans(cfg.fill_transparency, current_fade),
+                            cfg.outline, fade_trans(cfg.outline_transparency, current_fade),
+                            true)
                     end
 
                 elseif cfg.depth_mode == "Both" then
                     local params  = hl_params_cache[instance]
-                    local visible = params and is_visible(instance, params) or false
+                    local visible = params and is_visible_cached(instance, params) or false
                     if not visible then
-                        hl.FillColor = cfg.occ_fill; hl.FillTransparency = fade_trans(cfg.occ_fill_transparency)
-                        hl.OutlineColor = cfg.occ_outline; hl.OutlineTransparency = fade_trans(cfg.occ_outline_transparency)
+                        hl_set(hld,
+                            cfg.occ_fill,    fade_trans(cfg.occ_fill_transparency, current_fade),
+                            cfg.occ_outline, fade_trans(cfg.occ_outline_transparency, current_fade),
+                            true)
                     else
-                        hl.FillColor = cfg.fill; hl.FillTransparency = fade_trans(cfg.fill_transparency)
-                        hl.OutlineColor = cfg.outline; hl.OutlineTransparency = fade_trans(cfg.outline_transparency)
+                        hl_set(hld,
+                            cfg.fill,    fade_trans(cfg.fill_transparency, current_fade),
+                            cfg.outline, fade_trans(cfg.outline_transparency, current_fade),
+                            true)
                     end
                 end
             end
