@@ -82,46 +82,6 @@ if not screen_gui then
     screen_gui.Parent         = local_player:WaitForChild("PlayerGui")
 end
 
--- // death fade
--- _fade: 0 = fully visible, 1 = fully hidden
-local _fade          = 0
-local _fade_target   = 0
-local _fade_elapsed  = 0
-local _fade_from     = 0
-local _fade_duration = 0.8
-local _fade_running  = false
-local _death_conn    = nil
-
-local function start_fade(to)
-    _fade_from    = _fade
-    _fade_target  = to
-    _fade_elapsed = 0
-    _fade_running = true
-end
-
-local function watch_humanoid(char)
-    local hum = char:WaitForChild("Humanoid", 5)
-    if not hum then return end
-    if _death_conn then _death_conn:Disconnect() end
-    _death_conn = hum.Died:Connect(function()
-        start_fade(1)
-    end)
-end
-
-if local_player.Character then
-    task.spawn(watch_humanoid, local_player.Character)
-end
-local_player.CharacterAdded:Connect(function(char)
-    start_fade(0)  -- fade back in on respawn
-    task.spawn(watch_humanoid, char)
-end)
-
--- blends a base transparency toward 1 by the current _fade amount
-local function fade_trans(base)
-    -- result = 1 - (1 - base) * (1 - _fade)
-    return 1 - (1 - base) * (1 - _fade)
-end
-
 -- // helpers
 
 local function make_frame(z)
@@ -428,17 +388,6 @@ end
 
 -- // main thread
 run_service.RenderStepped:Connect(function(dt)
-    -- advance death fade
-    if _fade_running then
-        _fade_elapsed = _fade_elapsed + dt
-        local alpha = math.clamp(_fade_elapsed / _fade_duration, 0, 1)
-        local t = alpha * alpha * (3 - 2 * alpha)  -- smooth step
-        _fade = _fade_from + (_fade_target - _fade_from) * t
-        if alpha >= 1 then
-            _fade = _fade_target
-            _fade_running = false
-        end
-    end
     for instance, data in pairs(espinstances) do
 
         -- cleanup 
@@ -473,7 +422,32 @@ run_service.RenderStepped:Connect(function(dt)
             continue
         end
 
-        if instance:IsA("Model") and not instance.PrimaryPart then
+        local is_dead = false
+        if instance:IsA("Model") then
+            local hum = instance:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health <= 0 then
+                is_dead = true
+            elseif not instance.PrimaryPart then
+                is_dead = true
+            end
+        end
+
+        data.fade_alpha = data.fade_alpha or 0
+        local target_fade = is_dead and 1 or 0
+        if data.fade_alpha < target_fade then
+            data.fade_alpha = math.min(1, data.fade_alpha + dt / 0.8)
+        elseif data.fade_alpha > target_fade then
+            data.fade_alpha = math.max(0, data.fade_alpha - dt / 0.8)
+        end
+
+        local alpha = data.fade_alpha
+        local current_fade = alpha * alpha * (3 - 2 * alpha)
+
+        local function fade_trans(base)
+            return 1 - (1 - base) * (1 - current_fade)
+        end
+
+        if current_fade >= 0.99 and target_fade == 1 then
             hide_instance(data)
             continue
         end
