@@ -352,18 +352,40 @@ end
 local hl_params_cache = {}
 local hl_vis_cache    = {}  -- cached visibility result per instance
 local hl_vis_tick     = {}  -- last tick we computed visibility
-local HL_VIS_INTERVAL = 0.1 -- seconds between raycast checks (10 Hz)
+local HL_VIS_INTERVAL = 0.2 -- seconds between raycast checks (5 Hz)
 
--- Reuse sign table from bbox
+-- Fast visibility: check only key parts (PrimaryPart, HumanoidRootPart, Head)
+-- Center ray first for early exit, corner rays only as fallback
 local function is_visible(instance, params)
     local origin = camera.CFrame.Position
-    -- Only check BasePart children (not full descendants) for speed
-    for _, part in ipairs(instance:GetChildren()) do
-        if not part:IsA("BasePart") then continue end
-        -- Center ray first (cheapest, most likely to hit)
+
+    -- Check key parts only (avoids iterating all children)
+    local parts_to_check = {}
+    local pp = instance.PrimaryPart
+    if pp then parts_to_check[1] = pp end
+    local hrp = instance:FindFirstChild("HumanoidRootPart")
+    if hrp and hrp ~= pp then parts_to_check[#parts_to_check + 1] = hrp end
+    local head = instance:FindFirstChild("Head")
+    if head and head ~= pp then parts_to_check[#parts_to_check + 1] = head end
+
+    -- If no key parts found, fall back to first BasePart child
+    if #parts_to_check == 0 then
+        for _, p in ipairs(instance:GetChildren()) do
+            if p:IsA("BasePart") then
+                parts_to_check[1] = p
+                break
+            end
+        end
+    end
+
+    for _, part in ipairs(parts_to_check) do
+        -- Center ray (cheapest, most likely to succeed)
         if not workspace:Raycast(origin, part.Position - origin, params) then return true end
-        -- 8 corner rays
-        local cf, half = part.CFrame, part.Size * 0.5
+    end
+
+    -- Corner rays only on primary part as last resort
+    if pp then
+        local cf, half = pp.CFrame, pp.Size * 0.5
         local hx, hy, hz = half.X, half.Y, half.Z
         for i = 1, 8 do
             local s = BBOX_SIGNS[i]
@@ -371,6 +393,7 @@ local function is_visible(instance, params)
             if not workspace:Raycast(origin, corner - origin, params) then return true end
         end
     end
+
     return false
 end
 
@@ -451,6 +474,7 @@ local function hl_set(hld, fc, ft, oc, ot, enabled)
 end
 
 local FADE_DURATION = 0.5 -- seconds (moved outside loop)
+local _last_lp_char = nil  -- track character changes for highlight filter
 
 -- // main thread
 run_service.RenderStepped:Connect(function(dt)
@@ -459,10 +483,13 @@ run_service.RenderStepped:Connect(function(dt)
     local vp_size = camera.ViewportSize
     local lp_char = local_player.Character
 
-    -- Keep highlight raycast filters fresh (handles respawns)
-    if lp_char then
-        for inst, params in pairs(hl_params_cache) do
-            params.FilterDescendantsInstances = { inst, lp_char }
+    -- Only update raycast filters when the character reference actually changes
+    if lp_char ~= _last_lp_char then
+        _last_lp_char = lp_char
+        if lp_char then
+            for inst, params in pairs(hl_params_cache) do
+                params.FilterDescendantsInstances = { inst, lp_char }
+            end
         end
     end
 
