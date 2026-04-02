@@ -205,7 +205,7 @@ function espfunctions.add_box(instance)
 
     -- LAYER 1: outer black stroke (2px) on the holder itself
     local stroke_outer = Instance.new("UIStroke")
-    stroke_outer.Thickness    = 2
+    stroke_outer.Thickness    = 1
     stroke_outer.Color        = Color3.new(0, 0, 0)
     stroke_outer.Transparency = 0
     stroke_outer.LineJoinMode = Enum.LineJoinMode.Miter
@@ -221,7 +221,7 @@ function espfunctions.add_box(instance)
     mid_frame.Parent                 = holder
 
     local stroke_mid = Instance.new("UIStroke")
-    stroke_mid.Thickness    = 2
+    stroke_mid.Thickness    = 1
     stroke_mid.Color        = Color3.new(1, 1, 1)
     stroke_mid.Transparency = 0
     stroke_mid.LineJoinMode = Enum.LineJoinMode.Miter
@@ -237,7 +237,7 @@ function espfunctions.add_box(instance)
     inner_frame.Parent                 = holder
 
     local stroke_inner = Instance.new("UIStroke")
-    stroke_inner.Thickness    = 2
+    stroke_inner.Thickness    = 1
     stroke_inner.Color        = Color3.new(0, 0, 0)
     stroke_inner.Transparency = 0
     stroke_inner.LineJoinMode = Enum.LineJoinMode.Miter
