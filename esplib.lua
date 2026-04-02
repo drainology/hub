@@ -10,15 +10,11 @@ if not esplib then
         },
         healthbar = {
             enabled = false,
-            color_mode = "static", -- "static", "gradient", or "gradient_color"
+            color_mode = "static", -- "static" or "gradient_color"
             fill = Color3.new(0,1,0),
             fill_transparency = 0,
-            gradient_low  = Color3.new(1,0,0),   -- color at 0% hp
-            gradient_high = Color3.new(0,1,0),   -- color at 100% hp
-            gradient_color_start = Color3.new(1,0,0), -- visual gradient bottom
-            gradient_color_end   = Color3.new(0,1,0), -- visual gradient top
-            outline = Color3.new(0,0,0),
-            outline_transparency = 0,
+            gradient_color_start = Color3.new(1,0,0), -- visual gradient top
+            gradient_color_end   = Color3.new(0,1,0), -- visual gradient bottom
         },
         name = {
             enabled = false,
@@ -624,10 +620,7 @@ run_service.RenderStepped:Connect(function(dt)
                     local fillh     = height * health
                     local mode = esplib.healthbar.color_mode
                     local fill_color
-                    if mode == "gradient" then
-                        fill_color = esplib.healthbar.gradient_low:Lerp(esplib.healthbar.gradient_high, health)
-                        ui_grad.Enabled = false
-                    elseif mode == "gradient_color" then
+                    if mode == "gradient_color" then
                         fill_color = Color3.new(1,1,1) -- base white so gradient colors show true
                         ui_grad.Color = ColorSequence.new(esplib.healthbar.gradient_color_start, esplib.healthbar.gradient_color_end)
                         ui_grad.Enabled = true
@@ -635,8 +628,8 @@ run_service.RenderStepped:Connect(function(dt)
                         fill_color = esplib.healthbar.fill
                         ui_grad.Enabled = false
                     end
-                    outline.BackgroundColor3       = esplib.healthbar.outline
-                    outline.BackgroundTransparency = fade_trans(esplib.healthbar.outline_transparency, current_fade)
+                    outline.BackgroundColor3       = BLACK
+                    outline.BackgroundTransparency = fade_trans(0, current_fade)
                     outline.Position               = udim2off(bx, by)
                     outline.Size                   = udim2off(1 + 2*pad, height + 2*pad)
                     outline.Visible                = true
