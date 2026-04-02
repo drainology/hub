@@ -117,6 +117,8 @@ local function make_line(thickness, z)
 end
 
 local function set_line(frame, from, to, color, thickness, transparency)
+    from = Vector2.new(math.round(from.X), math.round(from.Y))
+    to   = Vector2.new(math.round(to.X), math.round(to.Y))
     local diff   = to - from
     local length = diff.Magnitude
     frame.BackgroundColor3    = color
@@ -125,8 +127,20 @@ local function set_line(frame, from, to, color, thickness, transparency)
         frame.Size = UDim2.fromOffset(0, thickness)
         return
     end
-    frame.Size     = UDim2.fromOffset(math.ceil(length), thickness)
-    frame.Position = UDim2.fromOffset((from.X + to.X) / 2, (from.Y + to.Y) / 2)
+    local len_adj = math.ceil(length) + thickness
+    frame.Size     = UDim2.fromOffset(len_adj, thickness)
+    
+    local is_vert = math.abs(diff.X) < math.abs(diff.Y)
+    local screen_w = is_vert and thickness or len_adj
+    local screen_h = is_vert and len_adj or thickness
+    
+    local cx = (from.X + to.X) / 2
+    local cy = (from.Y + to.Y) / 2
+    
+    local pos_x = math.round(cx - screen_w / 2) + screen_w / 2
+    local pos_y = math.round(cy - screen_h / 2) + screen_h / 2
+    
+    frame.Position = UDim2.fromOffset(pos_x, pos_y)
     frame.Rotation = math.deg(math.atan2(diff.Y, diff.X))
 end
 
@@ -425,37 +439,47 @@ run_service.RenderStepped:Connect(function(dt)
         local is_dead = false
         if instance:IsA("Model") then
             local hum = instance:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health <= 0 then
-                is_dead = true
-            elseif not instance.PrimaryPart then
+            if hum then
+                data.had_humanoid = true
+                if hum.Health <= 0 or hum:GetState() == Enum.HumanoidStateType.Dead then
+                    is_dead = true
+                end
+            else
+                if data.had_humanoid then
+                    is_dead = true
+                end
+            end
+            
+            if not instance.PrimaryPart then
                 is_dead = true
             end
         end
 
-        data.fade_alpha = data.fade_alpha or 0
-        local target_fade = is_dead and 1 or 0
-        local FADE_DURATION = 1.5 -- seconds
-        local delta = type(dt) == "number" and dt or (1 / 60)
-        
-        if data.fade_alpha < target_fade then
-            data.fade_alpha = math.min(1, data.fade_alpha + delta / FADE_DURATION)
-        elseif data.fade_alpha > target_fade then
-            data.fade_alpha = math.max(0, data.fade_alpha - delta / FADE_DURATION)
+        local FADE_DURATION = 0.5 -- seconds
+        if is_dead then
+            data.death_time = data.death_time or tick()
+            local elapsed_time = tick() - data.death_time
+            data.fade_alpha = math.clamp(elapsed_time / FADE_DURATION, 0, 1)
+        else
+            data.death_time = nil
+            data.fade_alpha = 0
         end
 
         local alpha = data.fade_alpha
-        local current_fade = alpha * alpha * (3 - 2 * alpha)
+        local current_fade = alpha * alpha * (3 - 2 * alpha) -- smooth easing
 
         local function fade_trans(base)
             return 1 - (1 - base) * (1 - current_fade)
         end
 
-        if current_fade >= 0.99 and target_fade == 1 then
+        if current_fade >= 0.99 and is_dead then
             hide_instance(data)
             continue
         end
 
         local min, max, onscreen = get_bounding_box(instance)
+        min = Vector2.new(math.round(min.X), math.round(min.Y))
+        max = Vector2.new(math.round(max.X), math.round(max.Y))
 
         -- box
         if data.box then
@@ -476,7 +500,7 @@ run_service.RenderStepped:Connect(function(dt)
                     for i = 1, 4 do
                         local f, t = sides[i][1], sides[i][2]
                         local o = box.side_outline[i]
-                        set_line(o, f, t, esplib.box.outline, 2, fade_trans(esplib.box.outline_transparency))
+                        set_line(o, f, t, esplib.box.outline, 3, fade_trans(esplib.box.outline_transparency))
                         o.Visible = true
                         local fl = box.side_fill[i]
                         set_line(fl, f, t, esplib.box.fill, 1, fade_trans(esplib.box.fill_transparency))
@@ -501,7 +525,7 @@ run_service.RenderStepped:Connect(function(dt)
                     for i = 1, 8 do
                         local f, t = corners[i][1], corners[i][2]
                         local o = box.corner_outline[i]
-                        set_line(o, f, t, esplib.box.outline, 2, fade_trans(esplib.box.outline_transparency))
+                        set_line(o, f, t, esplib.box.outline, 3, fade_trans(esplib.box.outline_transparency))
                         o.Visible = true
                         local fl = box.corner_fill[i]
                         set_line(fl, f, t, esplib.box.fill, 1, fade_trans(esplib.box.fill_transparency))
@@ -557,6 +581,12 @@ run_service.RenderStepped:Connect(function(dt)
                     local pl = players:GetPlayerFromCharacter(instance)
                     if pl then name_s = pl.Name end
                 end
+                
+                -- // DEBUG TAG
+                if is_dead then
+                    name_s = name_s .. string.format(" [D:%.2f]", current_fade)
+                end
+
                 t.Text                = name_s
                 t.TextSize            = esplib.name.size
                 t.TextColor3          = esplib.name.fill
@@ -620,8 +650,7 @@ run_service.RenderStepped:Connect(function(dt)
                 end
 
                 local diff = to_pos - from_pos
-                local dir  = diff.Magnitude > 0.5 and diff.Unit or Vector2.new(0, 0)
-                set_line(outline, from_pos - dir, to_pos + dir, esplib.tracer.outline, 2, fade_trans(esplib.tracer.outline_transparency))
+                set_line(outline, from_pos, to_pos, esplib.tracer.outline, 3, fade_trans(esplib.tracer.outline_transparency))
                 outline.Visible = true
                 set_line(fill, from_pos, to_pos, esplib.tracer.fill, 1, fade_trans(esplib.tracer.fill_transparency))
                 fill.Visible = true
@@ -652,7 +681,7 @@ run_service.RenderStepped:Connect(function(dt)
                             if vA and vB then
                                 local from = Vector2.new(sA.X, sA.Y)
                                 local to   = Vector2.new(sB.X, sB.Y)
-                                set_line(line.outline, from, to, esplib.skeleton.outline, 2, fade_trans(esplib.skeleton.outline_transparency))
+                                set_line(line.outline, from, to, esplib.skeleton.outline, 3, fade_trans(esplib.skeleton.outline_transparency))
                                 line.outline.Visible = true
                                 set_line(line.fill,    from, to, esplib.skeleton.fill,    1, fade_trans(esplib.skeleton.fill_transparency))
                                 line.fill.Visible = true
