@@ -117,8 +117,6 @@ local function make_line(thickness, z)
 end
 
 local function set_line(frame, from, to, color, thickness, transparency)
-    from = Vector2.new(math.round(from.X), math.round(from.Y))
-    to   = Vector2.new(math.round(to.X), math.round(to.Y))
     local diff   = to - from
     local length = diff.Magnitude
     frame.BackgroundColor3    = color
@@ -127,20 +125,9 @@ local function set_line(frame, from, to, color, thickness, transparency)
         frame.Size = UDim2.fromOffset(0, thickness)
         return
     end
-    local len_adj = math.ceil(length) + thickness
+    local len_adj = (thickness > 1) and (math.ceil(length) + thickness - 1) or math.ceil(length)
     frame.Size     = UDim2.fromOffset(len_adj, thickness)
-    
-    local is_vert = math.abs(diff.X) < math.abs(diff.Y)
-    local screen_w = is_vert and thickness or len_adj
-    local screen_h = is_vert and len_adj or thickness
-    
-    local cx = (from.X + to.X) / 2
-    local cy = (from.Y + to.Y) / 2
-    
-    local pos_x = math.round(cx - screen_w / 2) + screen_w / 2
-    local pos_y = math.round(cy - screen_h / 2) + screen_h / 2
-    
-    frame.Position = UDim2.fromOffset(pos_x, pos_y)
+    frame.Position = UDim2.fromOffset((from.X + to.X) / 2, (from.Y + to.Y) / 2)
     frame.Rotation = math.deg(math.atan2(diff.Y, diff.X))
 end
 
@@ -478,8 +465,6 @@ run_service.RenderStepped:Connect(function(dt)
         end
 
         local min, max, onscreen = get_bounding_box(instance)
-        min = Vector2.new(math.round(min.X), math.round(min.Y))
-        max = Vector2.new(math.round(max.X), math.round(max.Y))
 
         -- box
         if data.box then
