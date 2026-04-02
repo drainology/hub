@@ -10,11 +10,13 @@ if not esplib then
         },
         healthbar = {
             enabled = false,
-            color_mode = "static", -- "static" or "gradient"
+            color_mode = "static", -- "static", "gradient", or "gradient_color"
             fill = Color3.new(0,1,0),
             fill_transparency = 0,
             gradient_low  = Color3.new(1,0,0),   -- color at 0% hp
             gradient_high = Color3.new(0,1,0),   -- color at 100% hp
+            gradient_color_start = Color3.new(1,0,0), -- visual gradient bottom
+            gradient_color_end   = Color3.new(0,1,0), -- visual gradient top
             outline = Color3.new(0,0,0),
             outline_transparency = 0,
         },
@@ -262,8 +264,13 @@ function espfunctions.add_healthbar(instance)
     if not instance or espinstances[instance] and espinstances[instance].healthbar then return end
     local outline = make_frame(1); outline.BackgroundTransparency = 0
     local fill    = make_frame(2); fill.BackgroundTransparency    = 0
+    -- UIGradient for "gradient_color" mode (bottom-to-top on vertical bar)
+    local ui_gradient = Instance.new("UIGradient")
+    ui_gradient.Rotation = -90  -- bottom to top
+    ui_gradient.Enabled  = false
+    ui_gradient.Parent   = fill
     espinstances[instance] = espinstances[instance] or {}
-    espinstances[instance].healthbar = { outline = outline, fill = fill }
+    espinstances[instance].healthbar = { outline = outline, fill = fill, ui_gradient = ui_gradient }
 end
 
 function espfunctions.add_name(instance)
@@ -604,6 +611,7 @@ run_service.RenderStepped:Connect(function(dt)
         -- healthbar
         if data.healthbar then
             local outline, fill = data.healthbar.outline, data.healthbar.fill
+            local ui_grad = data.healthbar.ui_gradient
             if not esplib.healthbar.enabled or not onscreen then
                 outline.Visible = false; fill.Visible = false
             else
@@ -614,11 +622,18 @@ run_service.RenderStepped:Connect(function(dt)
                     local by        = min.Y - pad
                     local health    = mathclamp(hum.Health / hum.MaxHealth, 0, 1)
                     local fillh     = height * health
+                    local mode = esplib.healthbar.color_mode
                     local fill_color
-                    if esplib.healthbar.color_mode == "gradient" then
+                    if mode == "gradient" then
                         fill_color = esplib.healthbar.gradient_low:Lerp(esplib.healthbar.gradient_high, health)
+                        ui_grad.Enabled = false
+                    elseif mode == "gradient_color" then
+                        fill_color = Color3.new(1,1,1) -- base white so gradient colors show true
+                        ui_grad.Color = ColorSequence.new(esplib.healthbar.gradient_color_start, esplib.healthbar.gradient_color_end)
+                        ui_grad.Enabled = true
                     else
                         fill_color = esplib.healthbar.fill
+                        ui_grad.Enabled = false
                     end
                     outline.BackgroundColor3       = esplib.healthbar.outline
                     outline.BackgroundTransparency = fade_trans(esplib.healthbar.outline_transparency, current_fade)
