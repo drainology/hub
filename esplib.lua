@@ -434,10 +434,11 @@ run_service.RenderStepped:Connect(function(dt)
 
         data.fade_alpha = data.fade_alpha or 0
         local target_fade = is_dead and 1 or 0
+        local FADE_DURATION = 1.5 -- seconds
         if data.fade_alpha < target_fade then
-            data.fade_alpha = math.min(1, data.fade_alpha + dt / 0.8)
+            data.fade_alpha = math.min(1, data.fade_alpha + dt / FADE_DURATION)
         elseif data.fade_alpha > target_fade then
-            data.fade_alpha = math.max(0, data.fade_alpha - dt / 0.8)
+            data.fade_alpha = math.max(0, data.fade_alpha - dt / FADE_DURATION)
         end
 
         local alpha = data.fade_alpha
