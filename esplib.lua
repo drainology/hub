@@ -211,22 +211,28 @@ function espfunctions.add_box(instance)
     stroke_outer.LineJoinMode = Enum.LineJoinMode.Miter
     stroke_outer.Parent       = holder
 
-    -- LAYER 2: main configurable colored band between the two black strokes
+    -- LAYER 2: colored band — transparent frame + UIStroke so only the border shows
     local mid_frame = Instance.new("Frame")
-    mid_frame.BackgroundColor3       = Color3.new(1, 1, 1)
-    mid_frame.BackgroundTransparency = 0
+    mid_frame.BackgroundTransparency = 1
     mid_frame.BorderSizePixel        = 0
     mid_frame.Position               = UDim2.new(0, 2, 0, 2)
     mid_frame.Size                   = UDim2.new(1, -4, 1, -4)
     mid_frame.ZIndex                 = 2
     mid_frame.Parent                 = holder
 
-    -- LAYER 3: inner black stroke (2px) on a frame inset 3px
+    local stroke_mid = Instance.new("UIStroke")
+    stroke_mid.Thickness    = 2
+    stroke_mid.Color        = Color3.new(1, 1, 1)
+    stroke_mid.Transparency = 0
+    stroke_mid.LineJoinMode = Enum.LineJoinMode.Miter
+    stroke_mid.Parent       = mid_frame
+
+    -- LAYER 3: inner black stroke — inset 4px so it sits just after the color band
     local inner_frame = Instance.new("Frame")
     inner_frame.BackgroundTransparency = 1
     inner_frame.BorderSizePixel        = 0
-    inner_frame.Position               = UDim2.new(0, 3, 0, 3)
-    inner_frame.Size                   = UDim2.new(1, -6, 1, -6)
+    inner_frame.Position               = UDim2.new(0, 4, 0, 4)
+    inner_frame.Size                   = UDim2.new(1, -8, 1, -8)
     inner_frame.ZIndex                 = 3
     inner_frame.Parent                 = holder
 
@@ -288,6 +294,7 @@ function espfunctions.add_box(instance)
         holder        = holder,
         stroke_outer  = stroke_outer,
         mid_frame     = mid_frame,
+        stroke_mid    = stroke_mid,
         inner_frame   = inner_frame,
         stroke_inner  = stroke_inner,
         corner_pieces = corner_pieces,
@@ -543,11 +550,12 @@ run_service.RenderStepped:Connect(function(dt)
                 local out_t = fade_trans(esplib.box.outline_transparency)
 
                 if not is_corner then
-                    -- normal: outer black stroke | colored band frame | inner black stroke
+                    -- normal: outer black | color stroke band | inner black (all transparent inside)
                     box.stroke_outer.Transparency = out_t
                     box.stroke_outer.Enabled      = true
-                    box.mid_frame.BackgroundColor3       = esplib.box.outline
-                    box.mid_frame.BackgroundTransparency = out_t
+                    box.stroke_mid.Color          = esplib.box.outline
+                    box.stroke_mid.Transparency   = out_t
+                    box.stroke_mid.Enabled        = true
                     box.stroke_inner.Transparency = out_t
                     box.stroke_inner.Enabled      = true
                     for _, c in ipairs(box.corner_pieces) do
@@ -557,6 +565,7 @@ run_service.RenderStepped:Connect(function(dt)
                 else
                     -- corner: hide normal strokes, show L-shaped pieces
                     box.stroke_outer.Enabled = false
+                    box.stroke_mid.Enabled   = false
                     box.stroke_inner.Enabled = false
                     box.mid_frame.BackgroundTransparency = 1
                     for _, c in ipairs(box.corner_pieces) do
