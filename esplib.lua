@@ -194,31 +194,39 @@ end
 function espfunctions.add_box(instance)
     if not instance or espinstances[instance] and espinstances[instance].box then return end
 
-    -- 3 sibling transparent frames + UIStroke each.
-    -- Siblings: no parent bg to block the interior.
-    -- Each frame is positioned 1px smaller on all sides than the previous,
-    -- so the 3 strokes sit adjacent: [black outer][color mid][black inner]
-    local function make_outline(z, color)
-        local f = Instance.new("Frame")
-        f.BackgroundTransparency = 1
-        f.BorderSizePixel        = 0
-        f.Visible                = false
-        f.ZIndex                 = z
-        f.Parent                 = screen_gui
-        local s = Instance.new("UIStroke")
-        s.Thickness    = 1
-        s.Color        = color
-        s.Transparency = 0
-        s.LineJoinMode = Enum.LineJoinMode.Miter
-        s.Parent       = f
-        return f, s
-    end
+    local holder = Instance.new("Frame")
+    holder.Name                   = "_Box"
+    holder.BackgroundTransparency = 1
+    holder.BorderSizePixel        = 0
+    holder.Visible                = false
+    holder.ZIndex                 = 1
+    holder.Parent                 = screen_gui
 
-    local frame_outer, stroke_outer = make_outline(1, Color3.new(0,0,0))
-    local frame_mid,   stroke_mid   = make_outline(2, Color3.new(1,1,1))
-    local frame_inner, stroke_inner = make_outline(3, Color3.new(0,0,0))
+    -- outer black UIStroke (border of holder)
+    local outer_stroke = Instance.new("UIStroke")
+    outer_stroke.Thickness    = 1
+    outer_stroke.Color        = Color3.new(0, 0, 0)
+    outer_stroke.Transparency = 0
+    outer_stroke.LineJoinMode = Enum.LineJoinMode.Miter
+    outer_stroke.Parent       = holder
 
-    -- corner box: 4 L-shapes, same 3-layer stack per arm
+    -- inner colored UIStroke (inset 1px from holder)
+    local inner_frame = Instance.new("Frame")
+    inner_frame.BackgroundTransparency = 1
+    inner_frame.BorderSizePixel        = 0
+    inner_frame.Position               = UDim2.new(0, 1, 0, 1)
+    inner_frame.Size                   = UDim2.new(1, -2, 1, -2)
+    inner_frame.ZIndex                 = 2
+    inner_frame.Parent                 = holder
+
+    local inner_stroke = Instance.new("UIStroke")
+    inner_stroke.Thickness    = 1
+    inner_stroke.Color        = Color3.new(1, 1, 1)
+    inner_stroke.Transparency = 0
+    inner_stroke.LineJoinMode = Enum.LineJoinMode.Miter
+    inner_stroke.Parent       = inner_frame
+
+    -- corner box L-shapes (3-layer: outer black / mid color / inner black)
     local corner_pieces = {}
     local CS = 0.25
     local function add_corner(ax, ay, px, py)
@@ -234,7 +242,7 @@ function espfunctions.add_box(instance)
             fo.Position               = UDim2.new(px, ox, py, oy)
             fo.Size                   = sz
             fo.ZIndex                 = 3
-            fo.Parent                 = frame_outer  -- parented to outer, moves with it
+            fo.Parent                 = holder
             local fm = Instance.new("Frame")
             fm.BackgroundColor3       = Color3.new(1,1,1)
             fm.BackgroundTransparency = 0
@@ -262,12 +270,10 @@ function espfunctions.add_box(instance)
 
     espinstances[instance] = espinstances[instance] or {}
     espinstances[instance].box = {
-        frame_outer   = frame_outer,
-        stroke_outer  = stroke_outer,
-        frame_mid     = frame_mid,
-        stroke_mid    = stroke_mid,
-        frame_inner   = frame_inner,
-        stroke_inner  = stroke_inner,
+        holder        = holder,
+        outer_stroke  = outer_stroke,
+        inner_frame   = inner_frame,
+        inner_stroke  = inner_stroke,
         corner_pieces = corner_pieces,
     }
 end
@@ -296,8 +302,8 @@ function espfunctions.add_tracer(instance)
     if not instance or espinstances[instance] and espinstances[instance].tracer then return end
     espinstances[instance] = espinstances[instance] or {}
     espinstances[instance].tracer = {
-        outline = make_line(2, 1),
-        fill    = make_line(1, 2),
+        outline = make_line(1, 1),
+        fill    = make_line(0.5, 2),
     }
 end
 
@@ -408,9 +414,7 @@ end
 -- // hide all elements for an instance without destroying them
 local function hide_instance(data)
     if data.box then
-        data.box.frame_outer.Visible = false
-        data.box.frame_mid.Visible   = false
-        data.box.frame_inner.Visible = false
+        data.box.holder.Visible = false
     end
     if data.healthbar then
         data.healthbar.outline.Visible = false
@@ -440,9 +444,7 @@ run_service.RenderStepped:Connect(function(dt)
         -- cleanup 
         if not instance or not instance.Parent then
             if data.box then
-                data.box.frame_outer:Destroy()
-                data.box.frame_mid:Destroy()
-                data.box.frame_inner:Destroy()
+                data.box.holder:Destroy()
             end
             if data.healthbar then
                 data.healthbar.outline:Destroy()
@@ -519,58 +521,48 @@ run_service.RenderStepped:Connect(function(dt)
             local is_corner = esplib.box.type == "corner"
 
             if esplib.box.enabled and onscreen then
+                local holder = box.holder
+                holder.Position = UDim2.fromOffset(x, y)
+                holder.Size     = UDim2.fromOffset(w, h)
+                holder.Visible  = true
+
                 local out_t = fade_trans(esplib.box.outline_transparency)
 
                 if not is_corner then
-                    -- 3 sibling transparent frames: [black][color][black], no interior fill
-                    box.frame_outer.Position = UDim2.fromOffset(x,   y)
-                    box.frame_outer.Size     = UDim2.fromOffset(w,   h)
-                    box.frame_outer.Visible  = true
-                    box.stroke_outer.Transparency = out_t
-
-                    box.frame_mid.Position = UDim2.fromOffset(x+1, y+1)
-                    box.frame_mid.Size     = UDim2.fromOffset(w-2, h-2)
-                    box.frame_mid.Visible  = true
-                    box.stroke_mid.Color        = esplib.box.outline
-                    box.stroke_mid.Transparency = out_t
-
-                    box.frame_inner.Position = UDim2.fromOffset(x+2, y+2)
-                    box.frame_inner.Size     = UDim2.fromOffset(w-4, h-4)
-                    box.frame_inner.Visible  = true
-                    box.stroke_inner.Transparency = out_t
-
+                    -- normal box: enable UIStrokes, hide corner L-shapes
+                    box.outer_stroke.Color        = Color3.new(0, 0, 0)
+                    box.outer_stroke.Transparency = out_t
+                    box.outer_stroke.Enabled      = true
+                    box.inner_stroke.Color        = esplib.box.outline
+                    box.inner_stroke.Transparency = out_t
+                    box.inner_stroke.Enabled      = true
                     for _, c in ipairs(box.corner_pieces) do
                         c.h.outer.Visible = false
                         c.v.outer.Visible = false
                     end
                 else
-                    -- corner: hide normal outlines, show L-shaped pieces
-                    box.frame_outer.Visible = true
-                    box.frame_outer.Position = UDim2.fromOffset(x, y)
-                    box.frame_outer.Size     = UDim2.fromOffset(w, h)
-                    box.frame_mid.Visible    = false
-                    box.frame_inner.Visible  = false
+                    -- corner box: disable UIStrokes, show L-shaped pieces only
+                    box.outer_stroke.Enabled = false
+                    box.inner_stroke.Enabled = false
                     for _, c in ipairs(box.corner_pieces) do
-                        c.h.outer.BackgroundColor3       = Color3.new(0,0,0)
+                        c.h.outer.BackgroundColor3       = Color3.new(0, 0, 0)
                         c.h.outer.BackgroundTransparency = out_t
                         c.h.mid.BackgroundColor3         = esplib.box.outline
                         c.h.mid.BackgroundTransparency   = out_t
-                        c.h.inner.BackgroundColor3       = Color3.new(0,0,0)
+                        c.h.inner.BackgroundColor3       = Color3.new(0, 0, 0)
                         c.h.inner.BackgroundTransparency = out_t
-                        c.v.outer.BackgroundColor3       = Color3.new(0,0,0)
+                        c.v.outer.BackgroundColor3       = Color3.new(0, 0, 0)
                         c.v.outer.BackgroundTransparency = out_t
                         c.v.mid.BackgroundColor3         = esplib.box.outline
                         c.v.mid.BackgroundTransparency   = out_t
-                        c.v.inner.BackgroundColor3       = Color3.new(0,0,0)
+                        c.v.inner.BackgroundColor3       = Color3.new(0, 0, 0)
                         c.v.inner.BackgroundTransparency = out_t
                         c.h.outer.Visible = true
                         c.v.outer.Visible = true
                     end
                 end
             else
-                box.frame_outer.Visible = false
-                box.frame_mid.Visible   = false
-                box.frame_inner.Visible = false
+                box.holder.Visible = false
             end
         end
 
