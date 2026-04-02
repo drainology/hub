@@ -470,9 +470,9 @@ run_service.RenderStepped:Connect(function(dt)
         if data.box then
             local box = data.box
             if esplib.box.enabled and onscreen then
-                local x, y = min.X, min.Y
-                local w, h = (max - min).X, (max - min).Y
-                local len  = math.min(w, h) * 0.25
+                local x, y = math.floor(min.X), math.floor(min.Y)
+                local w, h = math.floor((max - min).X), math.floor((max - min).Y)
+                local len  = math.floor(math.min(w, h) * 0.25)
 
                 if esplib.box.type == "normal" then
                     -- 4 sides: top, right, bottom, left
