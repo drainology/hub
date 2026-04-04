@@ -1,4 +1,3 @@
--- 1
 local InputService = cloneref(game:GetService('UserInputService'));
 local TextService = cloneref(game:GetService('TextService'));
 local CoreGui = gethui();
@@ -167,8 +166,6 @@ function Library:Create(Class, Properties)
 
     if type(Class) == 'string' then
         _Instance = Instance.new(Class);
-        -- Aggressively randomize instance names
-        _Instance.Name = RandomString();
     end;
 
     for Property, Value in next, Properties do
