@@ -1,3 +1,4 @@
+-- 1
 local InputService = cloneref(game:GetService('UserInputService'));
 local TextService = cloneref(game:GetService('TextService'));
 local CoreGui = gethui();
@@ -5,17 +6,60 @@ local Teams = cloneref(game:GetService('Teams'));
 local Players = cloneref(game:GetService('Players'));
 local RunService = cloneref(game:GetService('RunService'))
 local TweenService = cloneref(game:GetService('TweenService'));
+local HttpService = cloneref(game:GetService('HttpService'));
 local RenderStepped = RunService.RenderStepped;
 local LocalPlayer = cloneref(game:GetService('Players')).LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
 
+local function RandomString()
+    local success, guid = pcall(function()
+        return HttpService:GenerateGUID(false):gsub("-", "");
+    end)
+    if success and type(guid) == "string" then
+        return guid;
+    end
+    local str = "";
+    for i = 1, 32 do
+        str = str .. string.char(math.random(97, 122));
+    end
+    return str;
+end
+
+local function StealthParent(instance, targetParent)
+    local connections = {}
+    if getconnections then
+        local function scrub(signal)
+            pcall(function()
+                for _, conn in ipairs(getconnections(signal)) do
+                    conn:Disable()
+                    table.insert(connections, conn)
+                end
+            end)
+        end
+        -- Suppress DescendantAdded/ChildAdded listeners temporarily
+        scrub(targetParent.ChildAdded)
+        scrub(targetParent.DescendantAdded)
+        scrub(game.DescendantAdded)
+        scrub(game.ItemChanged)
+    end
+    
+    instance.Parent = targetParent
+    
+    for _, conn in ipairs(connections) do
+        pcall(function() conn:Enable() end)
+    end
+end
+
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
 local ScreenGui = Instance.new('ScreenGui');
+ScreenGui.Name = RandomString();
+ScreenGui.ResetOnSpawn = false;
+
 ProtectGui(ScreenGui);
 
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global;
-ScreenGui.Parent = CoreGui;
+StealthParent(ScreenGui, CoreGui);
 
 local Toggles = {};
 local Options = {};
@@ -123,6 +167,8 @@ function Library:Create(Class, Properties)
 
     if type(Class) == 'string' then
         _Instance = Instance.new(Class);
+        -- Aggressively randomize instance names
+        _Instance.Name = RandomString();
     end;
 
     for Property, Value in next, Properties do
