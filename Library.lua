@@ -6,7 +6,7 @@ local Players = cloneref(game:GetService('Players'));
 local RunService = cloneref(game:GetService('RunService'))
 local TweenService = cloneref(game:GetService('TweenService'));
 local RenderStepped = RunService.RenderStepped;
-local LocalPlayer = cloneref(Players.LocalPlayer);
+local LocalPlayer = cloneref(game:GetService('Players')).LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
