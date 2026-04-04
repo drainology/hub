@@ -24,32 +24,33 @@ local function RandomString()
     return str;
 end
 
-local function StealthParent(instance, targetParent)
-    local connections = {}
-    if getconnections then
-        local function scrub(signal)
-            pcall(function()
-                for _, conn in ipairs(getconnections(signal)) do
+local function ScrubAntiCheat()
+    if not getconnections then return end
+    
+    local function scrub(signal)
+        pcall(function()
+            for _, conn in ipairs(getconnections(signal)) do
+                -- ForeignState means it was created by the game/CoreGui, not our executor script
+                if conn.ForeignState then
                     conn:Disable()
-                    table.insert(connections, conn)
                 end
-            end)
-        end
-        -- Suppress DescendantAdded/ChildAdded listeners temporarily
-        scrub(targetParent.ChildAdded)
-        scrub(targetParent.DescendantAdded)
-        scrub(game.DescendantAdded)
-        scrub(game.ItemChanged)
+            end
+        end)
     end
     
-    instance.Parent = targetParent
-    
-    for _, conn in ipairs(connections) do
-        pcall(function() conn:Enable() end)
-    end
+    -- Permanently suppress game detection listeners
+    scrub(CoreGui.ChildAdded)
+    scrub(CoreGui.DescendantAdded)
+    scrub(game.DescendantAdded)
+    scrub(game.ItemChanged)
+    pcall(function() scrub(game:GetService("LogService").MessageOut) end)
+    pcall(function() scrub(game:GetService("Stats").DescendantAdded) end)
 end
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
+
+-- Run the scrubber before spawning any instances
+ScrubAntiCheat()
 
 local ScreenGui = Instance.new('ScreenGui');
 ScreenGui.Name = RandomString();
@@ -58,7 +59,7 @@ ScreenGui.ResetOnSpawn = false;
 ProtectGui(ScreenGui);
 
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global;
-StealthParent(ScreenGui, CoreGui);
+ScreenGui.Parent = CoreGui;
 
 local Toggles = {};
 local Options = {};
