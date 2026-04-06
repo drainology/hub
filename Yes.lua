@@ -1275,7 +1275,12 @@ function library:LoadConfig(name, universal)
             for flag, v in next, config do
                 local func = flags[flag]
                 if func then
-                    func(v)
+                    local success, err = pcall(function()
+                        func(v)
+                    end)
+                    if not success then
+                        warn(string.format("Vozoid | Error loading flag [%s]: %s", tostring(flag), tostring(err)))
+                    end
                 end
             end
         end
@@ -1290,14 +1295,17 @@ function library:GetConfigs(universal)
     local placeidfolder = string.format("%s//%s", self.folder, game.PlaceId)
     local universalfolder = self.folder .. "//universal"
 
-    for _, config in next, (isfolder(placeidfolder) and listfiles(placeidfolder) or {}) do
-        local name = config:gsub(placeidfolder .. "\\", ""):gsub("." .. self.extension, "")
+    for i, config in next, (isfolder(placeidfolder) and listfiles(placeidfolder) or {}) do
+        local name = config:gsub(".*[\\/]", ""):gsub("%." .. self.extension .. "$", "")
         table.insert(configs, name)
     end
 
     if universal and isfolder(universalfolder) then
-        for _, config in next, (isfolder(placeidfolder) and listfiles(placeidfolder) or {}) do
-            configs[config:gsub(universalfolder .. "\\", "")] = readfile(config)
+        for i, config in next, listfiles(universalfolder) do
+            local name = config:gsub(".*[\\/]", ""):gsub("%." .. self.extension .. "$", "")
+            if not table.find(configs, name) then
+                table.insert(configs, name)
+            end
         end
     end
 
@@ -2635,9 +2643,11 @@ function library.createkeybind(default, parent, blacklist, flag, callback, offse
 
     local function set(newkey)
         if tostring(newkey):find("Enum.KeyCode.") then
-            newkey = Enum.KeyCode[tostring(newkey):gsub("Enum.KeyCode.", "")]
+            local name = tostring(newkey):gsub("Enum.KeyCode.", "")
+            newkey = Enum.KeyCode[name] or Enum.KeyCode.RightShift
         elseif tostring(newkey):find("Enum.UserInputType.") then
-            newkey = Enum.UserInputType[tostring(newkey):gsub("Enum.UserInputType.", "")]
+            local name = tostring(newkey):gsub("Enum.UserInputType.", "")
+            newkey = Enum.UserInputType[name] or Enum.UserInputType.MouseButton2
         end
 
         if newkey ~= nil and not table.find(blacklist, newkey) then
