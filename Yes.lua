@@ -2350,8 +2350,11 @@ function library.createcolorpicker(default, defaultalpha, parent, count, flag, c
         rgbinput.Color = mouseover and utility.changecolor(library.theme["Object Background"], 3) or library.theme["Object Background"]
     end)
 
-    local hue, sat, val = default:ToHSV()
-    local hsv = default:ToHSV()
+    local cl_r, cl_g, cl_b = math.clamp(default.R, 0, 1), math.clamp(default.G, 0, 1), math.clamp(default.B, 0, 1)
+    local clamped_default = Color3.new(cl_r, cl_g, cl_b)
+
+    local hue, sat, val = clamped_default:ToHSV()
+    local hsv = clamped_default:ToHSV()
     local alpha = defaultalpha
     local oldcolor = hsv
 
@@ -2367,7 +2370,9 @@ function library.createcolorpicker(default, defaultalpha, parent, count, flag, c
         local oldcolor = hsv
         local oldalpha = alpha
 
-        hue, sat, val = color:ToHSV()
+        local cl_r, cl_g, cl_b = math.clamp(color.R, 0, 1), math.clamp(color.G, 0, 1), math.clamp(color.B, 0, 1)
+        local clamped_color = Color3.new(cl_r, cl_g, cl_b)
+        hue, sat, val = clamped_color:ToHSV()
         alpha = a or 1
         hsv = Color3.fromHSV(hue, sat, val)
 
@@ -2397,7 +2402,9 @@ function library.createcolorpicker(default, defaultalpha, parent, count, flag, c
 
     set(default, defaultalpha)
 
-    local defhue, _, _ = default:ToHSV()
+    local cl_r, cl_g, cl_b = math.clamp(default.R, 0, 1), math.clamp(default.G, 0, 1), math.clamp(default.B, 0, 1)
+    local clamped_default = Color3.new(cl_r, cl_g, cl_b)
+    local defhue, _, _ = clamped_default:ToHSV()
 
     local curhuesizey = defhue
 
@@ -2426,8 +2433,8 @@ function library.createcolorpicker(default, defaultalpha, parent, count, flag, c
 
     local function updatesatval(input)
         local sizeX = math.clamp((input.Position.X - saturation.AbsolutePosition.X) / saturation.AbsoluteSize.X, 0, 1)
-        local sizeY = 1 - math.clamp((input.Position.Y - saturation.AbsolutePosition.Y) / saturation.AbsoluteSize.Y, 0, 1)
-        local posY = math.clamp(((input.Position.Y - saturation.AbsolutePosition.Y) / saturation.AbsoluteSize.Y) * saturation.AbsoluteSize.Y, 0, saturation.AbsoluteSize.Y - 2)
+        local sizeY = 1 - math.clamp(((input.Position.Y - saturation.AbsolutePosition.Y) + 36) / saturation.AbsoluteSize.Y, 0, 1)
+        local posY = math.clamp(((input.Position.Y - saturation.AbsolutePosition.Y) / saturation.AbsoluteSize.Y) * saturation.AbsoluteSize.Y + 36, 0, saturation.AbsoluteSize.Y - 2)
         local posX = math.clamp(((input.Position.X - saturation.AbsolutePosition.X) / saturation.AbsoluteSize.X) * saturation.AbsoluteSize.X, 0, saturation.AbsoluteSize.X - 2)
 
         saturationpicker.Position = UDim2.new(0, posX, 0, posY)
@@ -2479,8 +2486,8 @@ function library.createcolorpicker(default, defaultalpha, parent, count, flag, c
     local slidingalpha = false
 
     local function updatealpha(input)
-        local sizeY = 1 - math.clamp((input.Position.Y - alphaframe.AbsolutePosition.Y) / alphaframe.AbsoluteSize.Y, 0, 1)
-        local posY = math.clamp(((input.Position.Y - alphaframe.AbsolutePosition.Y) / alphaframe.AbsoluteSize.Y) * alphaframe.AbsoluteSize.Y, 0, alphaframe.AbsoluteSize.Y - 2)
+        local sizeY = 1 - math.clamp(((input.Position.Y - alphaframe.AbsolutePosition.Y) + 36) / alphaframe.AbsoluteSize.Y, 0, 1)
+        local posY = math.clamp(((input.Position.Y - alphaframe.AbsolutePosition.Y) / alphaframe.AbsoluteSize.Y) * alphaframe.AbsoluteSize.Y + 36, 0, alphaframe.AbsoluteSize.Y - 2)
 
         alphapicker.Position = UDim2.new(0, 0, 0, posY)
 
