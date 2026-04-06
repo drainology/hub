@@ -2360,6 +2360,9 @@ function library.createcolorpicker(default, defaultalpha, parent, count, flag, c
 
     local function set(color, a, nopos)
         if type(color) == "table" then
+            if color.alpha then
+                a = color.alpha
+            end
             color = Color3.fromHex(color.color)
         end
 
@@ -2373,7 +2376,7 @@ function library.createcolorpicker(default, defaultalpha, parent, count, flag, c
         local cl_r, cl_g, cl_b = math.clamp(color.R, 0, 1), math.clamp(color.G, 0, 1), math.clamp(color.B, 0, 1)
         local clamped_color = Color3.new(cl_r, cl_g, cl_b)
         hue, sat, val = clamped_color:ToHSV()
-        alpha = a or 1
+        alpha = a or alpha or 1
         hsv = Color3.fromHSV(hue, sat, val)
 
         if hsv ~= oldcolor or alpha ~= oldalpha then
